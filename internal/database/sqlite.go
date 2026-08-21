@@ -209,3 +209,42 @@ func (s *SQLiteStore) InsertLog(runID, streamType, message string) error {
 	)
 	return err
 }
+
+func (s *SQLiteStore) GetUser(username string) (*models.User, error) {
+	var u models.User
+	err := s.Conn.QueryRow(
+		"SELECT user_id, username, password_hash, must_reset, created_at, updated_at FROM users WHERE username = ?",
+		username,
+	).Scan(&u.UserID, &u.Username, &u.PasswordHash, &u.MustReset, &u.CreatedAt, &u.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (s *SQLiteStore) CreateUser(username, passwordHash string, mustReset bool) error {
+	_, err := s.Conn.Exec(
+		"INSERT INTO users (username, password_hash, must_reset) VALUES (?, ?, ?)",
+		username, passwordHash, mustReset,
+	)
+	return err
+}
+
+func (s *SQLiteStore) UpdatePassword(username, newHash string) error {
+	_, err := s.Conn.Exec(
+		"UPDATE users SET password_hash = ?, must_reset = 0, updated_at = CURRENT_TIMESTAMP WHERE username = ?",
+		newHash, username,
+	)
+	return err
+}
+
+func (s *SQLiteStore) ClearMustReset(username string) error {
+	_, err := s.Conn.Exec(
+		"UPDATE users SET must_reset = 0, updated_at = CURRENT_TIMESTAMP WHERE username = ?",
+		username,
+	)
+	return err
+}

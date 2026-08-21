@@ -12,7 +12,7 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('polyorch_token')
   if (token) {
-    config.headers['X-API-Key'] = token
+    config.headers.Authorization = `Bearer ${token}`
   }
   return config
 })

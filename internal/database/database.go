@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type DB struct {
@@ -34,7 +35,32 @@ func Open(dbPath string) (*DB, error) {
 		return nil, err
 	}
 
+	if err := seedDefaultUser(conn); err != nil {
+		return nil, err
+	}
+
 	return &DB{Conn: conn}, nil
+}
+
+func seedDefaultUser(conn *sql.DB) error {
+	var count int
+	if err := conn.QueryRow("SELECT COUNT(*) FROM users").Scan(&count); err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Exec(
+		"INSERT INTO users (username, password_hash, must_reset) VALUES (?, ?, ?)",
+		"admin", string(hash), true,
+	)
+	return err
 }
 
 func runMigrations(conn *sql.DB) error {
@@ -77,6 +103,15 @@ CREATE TABLE IF NOT EXISTS execution_logs (
 
 CREATE INDEX IF NOT EXISTS idx_runs_status ON workflow_runs(status);
 CREATE INDEX IF NOT EXISTS idx_logs_run_id ON execution_logs(run_id);
+
+CREATE TABLE IF NOT EXISTS users (
+	user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+	username TEXT NOT NULL UNIQUE,
+	password_hash TEXT NOT NULL,
+	must_reset BOOLEAN DEFAULT 0,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 `
 	_, err := conn.Exec(schema)
 	return err

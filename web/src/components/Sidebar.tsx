@@ -1,4 +1,7 @@
-import { NavLink } from 'react-router-dom'
+import { useState } from 'react'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+import ChangePasswordModal from './ChangePasswordModal'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
@@ -7,6 +10,15 @@ const navItems = [
 ]
 
 export default function Sidebar() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const [showChangePassword, setShowChangePassword] = useState(false)
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
+
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-dark-900 border-r border-dark-700 z-50 flex flex-col">
       <div className="p-4 border-b border-dark-700">
@@ -42,11 +54,39 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-dark-700">
+      <div className="p-4 border-t border-dark-700 space-y-3">
+        {user && (
+          <div className="text-xs text-dark-400">
+            <div className="font-medium text-dark-300">Logged in as</div>
+            <div className="text-white">{user.username}</div>
+          </div>
+        )}
+        <button
+          onClick={() => setShowChangePassword(true)}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-dark-800 text-dark-200 rounded-lg hover:bg-dark-700 transition-colors text-sm"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+          </svg>
+          Change Password
+        </button>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-dark-800 text-dark-200 rounded-lg hover:bg-dark-700 transition-colors text-sm"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          Logout
+        </button>
         <div className="text-xs text-dark-500 text-center">
           PolyOrch v1.0.0
         </div>
       </div>
+
+      {showChangePassword && (
+        <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
+      )}
     </aside>
   )
 }

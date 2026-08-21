@@ -56,6 +56,33 @@ nats-server -js -sd /tmp/nats
 make run
 ```
 
+## 🔐 Authentication
+
+PolyOrch includes built-in authentication with JWT tokens.
+
+### Default Credentials
+- **Username:** `admin`
+- **Password:** `password`
+
+You will be prompted to change the default password on first login.
+
+### Environment Variables
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `POLYORCH_AUTH_BYPASS` | Skip authentication (local dev only) | `false` |
+| `POLYORCH_API_KEY` | Legacy API key (deprecated) | `""` |
+
+**Local Development Bypass:**
+```bash
+POLYORCH_AUTH_BYPASS=true make run
+```
+
+**Note:** `POLYORCH_AUTH_BYPASS` is intended for local development only. Do NOT use it in production or on GitHub Pages.
+
+### Password Management
+- **Change Password:** Use the "Change Password" button in the sidebar
+- **Reset Password:** POST `/api/v1/auth/reset` with a new password (requires authentication)
+
 ## 📦 Project Structure
 
 ```

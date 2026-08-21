@@ -1,10 +1,10 @@
 package middleware
 
 import (
-	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog"
+	"github.com/nimish-nirmal/polyorch/internal/handlers"
 )
 
 func Auth(apiKey string) gin.HandlerFunc {
@@ -13,6 +13,7 @@ func Auth(apiKey string) gin.HandlerFunc {
 		"/swagger/index.html":   true,
 		"/swagger/doc.json":     true,
 		"/swagger/swagger.json": true,
+		"/api/v1/auth/login":    true,
 	}
 
 	return func(c *gin.Context) {
@@ -22,23 +23,29 @@ func Auth(apiKey string) gin.HandlerFunc {
 			return
 		}
 
-		key := c.GetHeader("X-API-Key")
-		if key == "" {
-			logger := zerolog.Ctx(c.Request.Context())
-			logger.Warn().Msg("missing API key")
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing API key"})
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(401, gin.H{"error": "missing authorization header"})
 			c.Abort()
 			return
 		}
 
-		if key != apiKey {
-			logger := zerolog.Ctx(c.Request.Context())
-			logger.Warn().Msg("invalid API key")
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid API key"})
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			c.JSON(401, gin.H{"error": "invalid authorization header"})
 			c.Abort()
 			return
 		}
 
+		tokenString := parts[1]
+		user, err := handlers.ValidateToken(tokenString)
+		if err != nil {
+			c.JSON(401, gin.H{"error": "invalid token"})
+			c.Abort()
+			return
+		}
+
+		c.Set("username", user.Username)
 		c.Next()
 	}
 }

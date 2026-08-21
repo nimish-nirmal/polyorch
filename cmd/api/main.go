@@ -53,8 +53,9 @@ func main() {
 	}
 
 	apiKey := os.Getenv("POLYORCH_API_KEY")
+	authBypass := os.Getenv("POLYORCH_AUTH_BYPASS") == "true"
 
-	if apiKey == "" {
+	if apiKey == "" && !authBypass {
 		logger.Warn().Msg("POLYORCH_API_KEY not set, auth disabled")
 	}
 
@@ -71,25 +72,33 @@ func main() {
 	router.Use(middleware.SecurityHeaders())
 	router.MaxMultipartMemory = 50 << 20
 
-	v1 := router.Group("/api/v1")
-	if apiKey != "" {
-		v1.Use(middleware.Auth(apiKey))
+	auth := router.Group("/api/v1/auth")
+	{
+		auth.POST("/login", server.Login)
+		auth.POST("/change-password", handlers.JWTAuth(), server.ChangePassword)
+		auth.POST("/reset", handlers.JWTAuth(), server.ResetPassword)
+		auth.GET("/me", handlers.JWTAuth(), server.Me)
+	}
+
+	protected := router.Group("/api/v1")
+	if !authBypass {
+		protected.Use(handlers.JWTAuth())
 	}
 	{
-		v1.POST("/projects", server.CreateProject)
-		v1.GET("/projects", server.ListProjects)
-		v1.GET("/projects/:id", server.GetProject)
+		protected.POST("/projects", server.CreateProject)
+		protected.GET("/projects", server.ListProjects)
+		protected.GET("/projects/:id", server.GetProject)
 
-		v1.POST("/projects/:id/versions", server.CreateVersion)
-		v1.GET("/projects/:id/versions", server.ListVersions)
-		v1.POST("/projects/:id/versions/:versionId/activate", server.SetActiveVersion)
+		protected.POST("/projects/:id/versions", server.CreateVersion)
+		protected.GET("/projects/:id/versions", server.ListVersions)
+		protected.POST("/projects/:id/versions/:versionId/activate", server.SetActiveVersion)
 
-		v1.POST("/runs", server.CreateRun)
-		v1.GET("/runs", server.ListRuns)
-		v1.GET("/runs/:id", server.GetRun)
-		v1.GET("/runs/:id/logs", server.GetRunLogs)
+		protected.POST("/runs", server.CreateRun)
+		protected.GET("/runs", server.ListRuns)
+		protected.GET("/runs/:id", server.GetRun)
+		protected.GET("/runs/:id/logs", server.GetRunLogs)
 
-		v1.GET("/ws/logs/:run_id", func(c *gin.Context) {
+		protected.GET("/ws/logs/:run_id", func(c *gin.Context) {
 			websocket.NewHandler(hub, cfg.NATSURL).ServeHTTP(c)
 		})
 	}

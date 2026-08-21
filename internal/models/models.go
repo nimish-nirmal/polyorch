@@ -17,6 +17,15 @@ type Project struct {
 	CreatedAt  time.Time `json:"created_at" db:"created_at"`
 }
 
+type User struct {
+	UserID      int64     `json:"user_id" db:"user_id"`
+	Username    string    `json:"username" db:"username"`
+	PasswordHash string   `json:"-" db:"password_hash"`
+	MustReset   bool      `json:"must_reset" db:"must_reset"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+}
+
 type ProjectVersion struct {
 	VersionID   string    `json:"version_id" db:"version_id"`
 	ProjectID   string    `json:"project_id" db:"project_id"`
@@ -67,4 +76,18 @@ type Manifest struct {
 	Entrypoint string            `json:"entrypoint" binding:"required"`
 	Env        map[string]string `json:"env,omitempty"`
 	Timeout    int               `json:"timeout,omitempty"`
+}
+
+type LoginRequest struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
+type ChangePasswordRequest struct {
+	OldPassword string `json:"old_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required"`
+}
+
+type ResetPasswordRequest struct {
+	NewPassword string `json:"new_password" binding:"required"`
 }

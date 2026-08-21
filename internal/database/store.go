@@ -20,4 +20,8 @@ type Store interface {
 	ListRuns(limit, offset int) ([]models.WorkflowRun, error)
 	GetRunLogs(runID string, limit, offset int) ([]models.ExecutionLog, error)
 	InsertLog(runID, streamType, message string) error
+	GetUser(username string) (*models.User, error)
+	CreateUser(username, passwordHash string, mustReset bool) error
+	UpdatePassword(username, newHash string) error
+	ClearMustReset(username string) error
 }
