@@ -6,6 +6,7 @@ RUN apk add --no-cache --virtual .build-deps \
     bash \
     curl \
     ca-certificates \
+    build-base \
     && update-ca-certificates
 
 WORKDIR /build
