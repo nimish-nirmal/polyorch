@@ -7,6 +7,8 @@ RUN apk add --no-cache --virtual .build-deps \
     curl \
     ca-certificates \
     build-base \
+    nodejs \
+    npm \
     && update-ca-certificates
 
 WORKDIR /build
