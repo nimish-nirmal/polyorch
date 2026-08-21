@@ -88,7 +88,6 @@ export default function ProjectDetail() {
 
   const fetchVersionFiles = async (version: Version) => {
     setSelectedVersion(version)
-    setVersionFiles({})
   }
 
   return (
