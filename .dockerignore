@@ -5,7 +5,6 @@ web/dist
 bin
 .github
 docs
-scripts
 *.md
 .env*
 .gitignore

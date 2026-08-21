@@ -72,7 +72,7 @@ function DocumentIcon() {
 
 export default function Dashboard() {
   const { runs, loading: runsLoading } = useRuns()
-  const { projects, loading: projectsLoading } = useProjects()
+  const { projects } = useProjects()
 
   const totalProjects = projects.length
   const activeRuns = runs.filter((r) => r.status === 'running' || r.status === 'pending').length

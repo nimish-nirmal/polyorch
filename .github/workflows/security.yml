@@ -82,9 +82,11 @@ jobs:
 
       - name: Upload gosec results
         if: matrix.scan-type == 'gosec'
-        uses: github/codeql-action/upload-sarif@v3
+        uses: actions/upload-artifact@v4
         with:
-          sarif_file: gosec-results.sarif
+          name: gosec-results
+          path: gosec-results.sarif
+          retention-days: 30
         continue-on-error: true
 
       - name: Setup Node.js

@@ -38,7 +38,6 @@ export default function ProjectDetail() {
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploadManifest, setUploadManifest] = useState('{\n  "version": "1.0.0",\n  "entrypoint": "main.py"\n}')
   const [selectedVersion, setSelectedVersion] = useState<Version | null>(null)
-  const [versionFiles, setVersionFiles] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (id) {
