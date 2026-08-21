@@ -73,7 +73,7 @@ jobs:
 
       - name: Install gosec
         if: matrix.scan-type == 'gosec'
-        run: go install github.com/securego/gosec/v2@latest
+        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.21.0
 
       - name: Run gosec SAST
         if: matrix.scan-type == 'gosec'
@@ -91,7 +91,7 @@ jobs:
         if: matrix.scan-type == 'npm-audit'
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: web/package-lock.json
 
@@ -111,7 +111,7 @@ jobs:
         continue-on-error: true
 
       - name: Run TruffleHog Secret Scan
-        if: matrix.scan-type == 'secret-scan'
+        if: matrix.scan-type == 'secret-scan' && github.event_name == 'pull_request'
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
@@ -122,9 +122,12 @@ jobs:
   dependency-review:
     name: Dependency Review
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Run Dependency Review
         uses: actions/dependency-review-action@v4
