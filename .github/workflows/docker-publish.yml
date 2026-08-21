@@ -55,5 +55,5 @@ jobs:
           context: .
           push: false
           tags: polyorch/all-in-one:buildcache
-          cache-from: type=registry,ref=polyorch/all-in-one:buildcache
-          cache-to: type=registry,ref=polyorch/all-in-one:buildcache,mode=max
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max

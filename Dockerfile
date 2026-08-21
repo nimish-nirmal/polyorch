@@ -18,22 +18,12 @@ RUN go mod download
 COPY . .
 
 # Build binaries with security flags
-RUN if [ -d "vendor" ] && [ -f "vendor/modules.txt" ] && [ -d "vendor/github.com" ]; then \
-        VENDOR_FLAG="-mod=vendor"; \
-    else \
-        VENDOR_FLAG="-mod=mod"; \
-    fi; \
-    CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
-    go build $$VENDOR_FLAG -ldflags='-w -s -extldflags "-static"' \
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+    go build -mod=mod -ldflags='-w -s -extldflags "-static"' \
     -o /app/polyorch-api ./cmd/api
 
-RUN if [ -d "vendor" ] && [ -f "vendor/modules.txt" ] && [ -d "vendor/github.com" ]; then \
-        VENDOR_FLAG="-mod=vendor"; \
-    else \
-        VENDOR_FLAG="-mod=mod"; \
-    fi; \
-    CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
-    go build $$VENDOR_FLAG -ldflags='-w -s -extldflags "-static"' \
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+    go build -mod=mod -ldflags='-w -s -extldflags "-static"' \
     -o /app/polyorch-worker ./cmd/worker
 
 # Strip binaries to reduce attack surface

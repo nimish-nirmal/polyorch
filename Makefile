@@ -4,18 +4,17 @@ DOCKER := docker
 IMAGE := polyorch/all-in-one
 TAG := latest
 
-.PHONY: help deps vendor build-api build-worker build-frontend build run docker-build docker-run docker-stop clean test lint fmt
+.PHONY: help deps build-api build-worker build-frontend build run docker-build docker-run docker-stop clean test lint fmt
 
 help:
 	@echo "PolyOrch Make Targets"
 	@echo "  deps           - Download Go and npm dependencies"
-	@echo "  vendor         - Vendor Go dependencies into ./vendor/"
-	@echo "  build-api      - Build Go API binary (uses vendor if present)"
-	@echo "  build-worker   - Build Go worker binary (uses vendor if present)"
+	@echo "  build-api      - Build Go API binary"
+	@echo "  build-worker   - Build Go worker binary"
 	@echo "  build-frontend - Build React frontend"
 	@echo "  build          - Build API, worker, and frontend"
 	@echo "  run            - Build and run locally with supervisord"
-	@echo "  docker-build   - Build Docker image (offline-friendly)"
+	@echo "  docker-build   - Build Docker image"
 	@echo "  docker-run     - Start Docker Compose"
 	@echo "  docker-stop    - Stop Docker Compose"
 	@echo "  clean          - Remove build artifacts"
@@ -27,23 +26,11 @@ deps:
 	$(GO) mod tidy
 	cd web && $(NPM) install
 
-vendor:
-	@if [ ! -d "vendor" ] || [ -z "$$(ls -A vendor 2>/dev/null)" ]; then \
-		bash scripts/vendor-deps.sh; \
-	else \
-		echo "Vendor directory already exists. Remove vendor/ to re-vendor."; \
-	fi
-
-VENDOR_FLAG :=
-ifneq ($(shell test -d vendor && test -f vendor/modules.txt && test -d vendor/github.com && echo yes),)
-VENDOR_FLAG := -mod=vendor
-endif
-
 build-api:
-	$(GO) build $(VENDOR_FLAG) -o bin/polyorch-api ./cmd/api
+	$(GO) build -mod=mod -o bin/polyorch-api ./cmd/api
 
 build-worker:
-	$(GO) build $(VENDOR_FLAG) -o bin/polyorch-worker ./cmd/worker
+	$(GO) build -mod=mod -o bin/polyorch-worker ./cmd/worker
 
 build-frontend:
 	cd web && $(NPM) run build
