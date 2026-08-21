@@ -161,8 +161,6 @@ jobs:
           context: .
           tags: polyorch/all-in-one:security-scan
           load: true
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
 
       - name: Run Trivy image scan
         uses: aquasecurity/trivy-action@master
