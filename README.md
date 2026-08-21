@@ -1,14 +1,179 @@
-# PolyOrch — Lightweight Polyglot DAG Orchestrator | Go + NATS JetStream + SQLite
+# PolyOrch — Lightweight Polyglot DAG Orchestrator
 
-<!-- SEO: Primary keywords - PolyOrch, DAG orchestrator, Go orchestrator, NATS JetStream, SQLite WAL, lightweight Airflow alternative, single container orchestrator, polyglot task runner, Docker orchestrator, real-time log streaming, Monaco editor, React Flow, xterm.js -->
-<!-- SEO: Secondary keywords - task orchestration, workflow engine, micro-orchestrator, sub-2s startup, low memory, embedded database, JetStream, Supervisord, single binary, portable orchestrator -->
+![Security Scan](https://github.com/nimish-nirmal/polyorch/actions/workflows/security.yml/badge.svg)
+![Docker](https://img.shields.io/badge/Docker-Alpine%203.19-blue?style=for-the-badge&logo=docker&logoColor=white)
+![Go](https://img.shields.io/badge/Go-1.22-blue?style=for-the-badge&logo=go&logoColor=white)
+![NATS](https://img.shields.io/badge/NATS-JetStream-2E7D32?style=for-the-badge&logo=nats&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-WAL-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
+![React](https://img.shields.io/badge/React-18.2-cyan?style=for-the-badge&logo=react&logoColor=white)
+![Supervisord](https://img.shields.io/badge/Supervisord-4.2-green?style=for-the-badge)
+![GitHub Pages](https://img.shields.io/badge/GitHub-Pages-222222?style=for-the-badge&logo=github&logoColor=white)
+![MIT License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
-> **PolyOrch** is an ultra-fast, lightweight, self-contained task and DAG orchestration engine built with **Go**, **NATS JetStream**, and **SQLite WAL**. It packages the entire production stack — API, worker, message queue, database, and React frontend — into a **single portable Docker container** managed by **Supervisond**. Designed as a modern, low-footprint alternative to Apache Airflow and Prefect.
+A lightweight, production-ready polyglot DAG orchestrator built with Go, NATS JetStream, and SQLite. Runs multi-language workloads (Python, Node.js, Bash) inside a single Docker container with real-time log streaming, Monaco IDE, and React Flow visualization.
 
-[![Go Version](https://img.shields.io/badge/Go-1.22-blue)](https://go.dev/dl/)
-[![Docker](https://img.shields.io/badge/Docker-Alpine%203.19-blue)](https://www.docker.com/)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
-[![React](https://img.shields.io/badge/React-18.2-cyan)](https://react.dev/)
+**Live Demo:** [https://nimish-nirmal.github.io/polyorch/](https://nimish-nirmal.github.io/polyorch/)
+
+## ✨ Features
+
+### Core Features
+- 🐳 **Single Container** — All components (API, worker, NATS, DB, UI) in one Alpine image
+- 🚀 **Sub-2s Boot** — Cold start in under 2 seconds
+- 💾 **Zero External DB** — SQLite WAL mode for ACID persistence
+- 📡 **Real-Time Logs** — WebSocket streaming via NATS Pub/Sub with xterm.js
+- 📜 **Immutable Versioning** — ZIP snapshots stored as SQLite BLOBs with instant rollback
+- 🌐 **Web IDE** — Monaco Editor + React Flow DAG + live terminal
+- 🔒 **ASH Security** — Automated security scanning (Trivy, gosec, TruffleHog)
+
+### Runtime Support
+- **Python 3** — `python3 main.py`
+- **Node.js** — `node main.js`
+- **Bash** — `bash script.sh`
+- **Go Binaries** — Execute compiled tools
+
+## 🚀 Quick Start
+
+### Option 1: Docker (Recommended)
+```bash
+git clone https://github.com/nimish-nirmal/polyorch.git
+cd polyorch
+docker compose up -d
+curl http://localhost:8080/health
+```
+
+### Option 2: Local Development
+```bash
+git clone https://github.com/nimish-nirmal/polyorch.git
+cd polyorch
+
+# Install dependencies
+make deps
+
+# Start NATS (separate terminal)
+nats-server -js -sd /tmp/nats
+
+# Build and run
+make run
+```
+
+## 📦 Project Structure
+
+```
+polyorch/
+├── cmd/
+│   ├── api/              # Go API server (Gin)
+│   │   └── main.go
+│   └── worker/           # Go Worker engine
+│       └── main.go
+├── internal/
+│   ├── config/           # Viper configuration
+│   ├── database/         # SQLite + migrations
+│   ├── handlers/         # REST API handlers
+│   ├── middleware/       # CORS, auth, security headers
+│   ├── models/           # Data models and DTOs
+│   ├── nats/             # NATS JetStream client
+│   ├── websocket/        # WebSocket hub + handler
+│   └── worker/           # Task execution engine
+├── web/                  # React frontend (Vite + TS + Tailwind)
+│   ├── src/
+│   │   ├── components/   # Monaco, Terminal, DAG, CodeEditor
+│   │   ├── pages/        # Dashboard, Projects, Runs
+│   │   ├── hooks/        # useProjects, useRuns, useWebSocket
+│   │   └── services/     # Axios API client
+│   ├── package.json
+│   └── vite.config.ts
+├── scripts/
+│   ├── entrypoint.sh     # Docker entrypoint
+│   └── supervisord.conf  # Process manager config
+├── Dockerfile            # Multi-stage production build
+├── docker-compose.yml    # Local deployment
+├── Makefile              # Build automation
+└── .github/
+    └── workflows/
+        ├── security.yml        # ASH scanning
+        ├── docker-publish.yml  # Docker Hub
+        └── deploy-frontend.yml # GitHub Pages
+```
+
+## 🛠️ Technologies Used
+
+| Technology | Version | Purpose |
+|-----------|---------|---------|
+| **Go** | 1.22 | API server + Worker engine |
+| **Gin** | v1.10.0 | HTTP framework |
+| **NATS JetStream** | v1.35.0 | Task queue + log streaming |
+| **SQLite** | v1.14.22 | WAL-mode persistence |
+| **React** | 18.2.0 | Frontend UI |
+| **Tailwind CSS** | 3.3.0 | Styling |
+| **Monaco Editor** | 4.6.0 | Code editing |
+| **React Flow** | 11.10.0 | DAG visualization |
+| **xterm.js** | 5.3.0 | Terminal emulator |
+| **Supervisord** | 4.2.5 | Process management |
+| **Alpine Linux** | 3.19 | Container base image |
+
+## 🚢 Deployment
+
+### GitHub Pages (Automatic)
+Push changes to `web/` on `main` branch to auto-deploy frontend:
+- **Live Demo:** https://nimish-nirmal.github.io/polyorch/
+
+### Docker Hub (Automatic)
+Push to `main` or tag `v*` to build and push:
+```bash
+docker pull polyorch/all-in-one:latest
+docker run -d -p 8080:8080 -v polyorch_data:/data polyorch/all-in-one:latest
+```
+
+### Local Docker
+```bash
+docker compose up -d
+```
+
+## 🔒 Security
+
+PolyOrch includes **Automatic Security Hardening (ASH)**:
+- **Trivy** — Container and filesystem vulnerability scanning
+- **gosec** — Go SAST for security flaws
+- **TruffleHog** — Secret scanning
+- **Docker Bench** — CIS Docker Benchmark
+
+See [SECURITY.md](SECURITY.md) for details.
+
+## 📚 Documentation
+
+| Document | Description |
+| :--- | :--- |
+| **[QUICKSTART.md](QUICKSTART.md)** | Setup guide for local and Docker |
+| **[DEMO.md](DEMO.md)** | Full demo walkthrough with sample projects |
+| **[PRD.md](PRD.md)** | Product requirements |
+| **[ARCHITECTURE.md](ARCHITECTURE.md)** | System architecture |
+| **[FLOWDIAGRAM.md](FLOWDIAGRAM.md)** | Mermaid diagrams |
+| **[PLAN.md](PLAN.md)** | Development roadmap |
+| **[SECURITY.md](SECURITY.md)** | Security policy and ASH checklist |
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make changes and ensure `make fmt` passes
+4. Commit and push
+5. Open a Pull Request
+
+## 📄 License
+
+Distributed under the **MIT License**. See `LICENSE` for details.
+
+## 📞 Support
+
+- **Issues:** [GitHub Issues](https://github.com/nimish-nirmal/polyorch/issues)
+- **Repository:** [https://github.com/nimish-nirmal/polyorch](https://github.com/nimish-nirmal/polyorch)
+
+---
+
+**Built with ❤️ using Go, NATS JetStream, SQLite, and React**
+
+**Your Name:** Nimish Nirmal  
+**Repository:** [https://github.com/nimish-nirmal/polyorch](https://github.com/nimish-nirmal/polyorch)
 
 ---
 
@@ -227,6 +392,7 @@ curl http://localhost:8080/health
 
 **Access points:**
 - 🌐 **Web UI Dashboard:** `http://localhost:8080`
+- 🌍 **Live Demo (GitHub Pages):** https://nimish-nirmal.github.io/polyorch/
 - 📖 **Swagger API Docs:** `http://localhost:8080/swagger/index.html`
 - 💚 **Health Check:** `http://localhost:8080/health`
 - 📡 **NATS Monitoring:** `nats://localhost:4222` (use `nats-server -js` separately if needed)
