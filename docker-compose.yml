@@ -1,0 +1,57 @@
+version: "3.8"
+
+services:
+  polyorch:
+    build: .
+    container_name: polyorch
+    ports:
+      - "8080:8080"
+      - "4222:4222"
+    volumes:
+      - polyorch_data:/data
+    environment:
+      POLYORCH_API_KEY: ${POLYORCH_API_KEY:-changeme}
+      POLYORCH_LOG_LEVEL: ${POLYORCH_LOG_LEVEL:-info}
+      POLYORCH_PORT: ${POLYORCH_PORT:-8080}
+      POLYORCH_DB_PATH: /data/polyorch.db
+      POLYORCH_NATS_URL: nats://127.0.0.1:4222
+      POLYORCH_RUNS_TMP_DIR: /tmp/runs
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:default
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m,noexec,nosuid,nodev
+      - /var/run:size=10m,noexec,nosuid,nodev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 256M
+        reservations:
+          cpus: '0.5'
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  polyorch_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${POLYORCH_DATA_PATH:-./data}

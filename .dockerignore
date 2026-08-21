@@ -1,0 +1,12 @@
+.git
+node_modules
+web/node_modules
+web/dist
+bin
+.github
+docs
+scripts
+*.md
+.env*
+.gitignore
+.agents

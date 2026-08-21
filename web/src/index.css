@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  background-color: #0f172a;
+  color: #e2e8f0;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.xterm {
+  padding: 8px;
+}
+
+.xterm-viewport::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.xterm-viewport::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+.react-flow__panel {
+  background-color: rgba(15, 23, 42, 0.8) !important;
+  border: 1px solid #334155 !important;
+  border-radius: 8px !important;
+  padding: 8px !important;
+}
+
+.react-flow__attribution {
+  display: none !important;
+}

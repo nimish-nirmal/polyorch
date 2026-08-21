@@ -1,0 +1,14 @@
+bin/
+dist/
+node_modules/
+.DS_Store
+*.db
+*.db-wal
+*.db-shm
+/tmp/runs/
+.env
+.env.local
+.vscode/
+.idea/
+web/.env.local
+.agents

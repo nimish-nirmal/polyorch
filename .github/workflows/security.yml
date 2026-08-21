@@ -1,0 +1,191 @@
+name: ASH — Automatic Security Hardening
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 0 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scan-type: [trivy-fs, trivy-config, gosec, npm-audit, secret-scan]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Trivy FS Scan
+        if: matrix.scan-type == 'trivy-fs'
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-fs-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+        continue-on-error: true
+
+      - name: Run Trivy Config Scan
+        if: matrix.scan-type == 'trivy-config'
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-config-results.sarif'
+          severity: 'CRITICAL,HIGH'
+        continue-on-error: true
+
+      - name: Upload Trivy FS results to GitHub Security
+        if: matrix.scan-type == 'trivy-fs'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs-results.sarif
+        continue-on-error: true
+
+      - name: Upload Trivy Config results to GitHub Security
+        if: matrix.scan-type == 'trivy-config'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-config-results.sarif
+        continue-on-error: true
+
+      - name: Setup Go
+        if: matrix.scan-type == 'gosec'
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install gosec
+        if: matrix.scan-type == 'gosec'
+        run: go install github.com/securego/gosec/v2@latest
+
+      - name: Run gosec SAST
+        if: matrix.scan-type == 'gosec'
+        run: |
+          gosec -fmt sarif -out gosec-results.sarif ./cmd/... ./internal/... || true
+
+      - name: Upload gosec results
+        if: matrix.scan-type == 'gosec'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: gosec-results.sarif
+        continue-on-error: true
+
+      - name: Setup Node.js
+        if: matrix.scan-type == 'npm-audit'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Run npm audit
+        if: matrix.scan-type == 'npm-audit'
+        run: |
+          cd web
+          npm audit --audit-level=high --json > npm-audit-results.json || true
+
+      - name: Upload npm audit results
+        if: matrix.scan-type == 'npm-audit'
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-results
+          path: web/npm-audit-results.json
+          retention-days: 30
+        continue-on-error: true
+
+      - name: Run TruffleHog Secret Scan
+        if: matrix.scan-type == 'secret-scan'
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-3.0, AGPL-3.0
+
+  docker-security:
+    name: Docker Security Scan
+    runs-on: ubuntu-latest
+    needs: security-scan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          tags: polyorch/all-in-one:security-scan
+          load: true
+          cache-from: type=registry,ref=polyorch/all-in-one:buildcache
+
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'polyorch/all-in-one:security-scan'
+          format: 'sarif'
+          output: 'trivy-image-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          vuln-type: 'os,library'
+        continue-on-error: true
+
+      - name: Upload image scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-image-results.sarif
+        continue-on-error: true
+
+      - name: Run Docker Bench for Security
+        run: |
+          docker run --rm -it --net host --pid host \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            docker/docker-bench-security || true
+
+  security-gate:
+    name: Security Gate
+    runs-on: ubuntu-latest
+    needs: [security-scan, dependency-review]
+    if: always()
+
+    steps:
+      - name: Check for critical vulnerabilities
+        run: |
+          if [ -f trivy-fs-results.sarif ]; then
+            CRITICAL=$(jq '[.runs[].results[] | select(.level=="error")] | length' trivy-fs-results.sarif || echo 0)
+            if [ "$CRITICAL" -gt 0 ]; then
+              echo "❌ Security gate failed: $CRITICAL critical vulnerabilities found"
+              exit 1
+            fi
+          fi
+          echo "✅ Security gate passed"
