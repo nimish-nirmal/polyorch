@@ -34,9 +34,6 @@ cd polyorch
 ```bash
 # Install Go dependencies (uses go.mod with pinned versions)
 make deps
-
-# Optional: Vendor dependencies for fully offline builds
-make vendor
 ```
 
 > **Note:** `make vendor` creates the `vendor/` directory with all Go dependencies. The Docker build automatically detects and uses `-mod=vendor` when present.
@@ -72,7 +69,7 @@ make run
 
 ```bash
 # Health check
-curl http://localhost:8080/health
+curl http://localhost:8082/health
 
 # Expected response:
 # {"status":"ok"}
@@ -80,7 +77,7 @@ curl http://localhost:8080/health
 
 ### Step 6: Open the UI
 
-Visit **http://localhost:8080** in your browser.
+Visit **http://localhost:8082** in your browser.
 
 ---
 
@@ -109,7 +106,7 @@ docker compose logs -f
 
 ```bash
 # Health check
-curl http://localhost:8080/health
+curl http://localhost:8082/health
 
 # Check container is running
 docker compose ps
@@ -138,7 +135,7 @@ docker build -t polyorch/all-in-one:latest .
 # Run it
 docker run -d \
   --name polyorch \
-  -p 8080:8080 \
+  -p 8082:8082 \
   -p 4222:4222 \
   -v polyorch_data:/data \
   -e POLYORCH_API_KEY=changeme \
@@ -168,7 +165,7 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:5173** — Vite proxies API requests to `http://localhost:8080`.
+Open **http://localhost:5173** — Vite proxies API requests to `http://localhost:8082`.
 
 **To build for production:**
 ```bash
@@ -205,7 +202,7 @@ base: '/polyorch/'
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
-| `POLYORCH_PORT` | `8080` | HTTP server port |
+| `POLYORCH_PORT` | `8082` | HTTP server port |
 | `POLYORCH_DB_PATH` | `/data/polyorch.db` | SQLite database path |
 | `POLYORCH_NATS_URL` | `nats://127.0.0.1:4222` | NATS server URL |
 | `POLYORCH_RUNS_TMP_DIR` | `/tmp/runs` | Worker temp directory |
@@ -216,8 +213,8 @@ base: '/polyorch/'
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
-| `VITE_API_URL` | `http://localhost:8080` | Backend API URL |
-| `VITE_WS_URL` | `ws://localhost:8080` | WebSocket URL |
+| `VITE_API_URL` | `http://localhost:8082` | Backend API URL |
+| `VITE_WS_URL` | `ws://localhost:8082` | WebSocket URL |
 
 ---
 
@@ -231,10 +228,10 @@ base: '/polyorch/'
 ### Issue: `npm install` fails with peer dependency conflicts
 **Fix:** Use `web/.npmrc` which sets `legacy-peer-deps=false`. If issues persist, try `npm install --legacy-peer-deps`.
 
-### Issue: Port 8080 already in use
+### Issue: Port 8082 already in use
 **Fix:** Change the port in your environment:
 ```bash
-PORT=8081 make run
+POLYORCH_PORT=8081 make run
 # Or with Docker:
 docker run -p 8081:8081 -e POLYORCH_PORT=8081 polyorch/all-in-one:latest
 ```
@@ -270,7 +267,6 @@ mkdir -p /tmp/runs && chmod 755 /tmp/runs
 | :--- | :--- |
 | `make help` | Show all available targets |
 | `make deps` | Install Go and npm dependencies |
-| `make vendor` | Vendor Go dependencies into `./vendor/` |
 | `make build-api` | Build Go API binary |
 | `make build-worker` | Build Go worker binary |
 | `make build-frontend` | Build React frontend |

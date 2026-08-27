@@ -30,7 +30,11 @@ export function useProjects() {
     setError(null)
     try {
       const response = await api.get(endpoints.projects)
-      setProjects(response.data)
+      const mapped = (response.data.data || []).map((item: any) => ({
+        ...item,
+        id: item.project_id,
+      }))
+      setProjects(mapped)
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to fetch projects')
     } finally {
@@ -43,8 +47,9 @@ export function useProjects() {
     setError(null)
     try {
       const response = await api.post(endpoints.projects, { name, description })
-      setProjects((prev) => [...prev, response.data])
-      return response.data
+      const created = { ...response.data.data, id: response.data.data.project_id }
+      setProjects((prev) => [...prev, created])
+      return created
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to create project')
       throw err
@@ -72,7 +77,14 @@ export function useProjects() {
     setError(null)
     try {
       const response = await api.get(endpoints.projectVersions(projectId))
-      return response.data
+      const mapped = (response.data.data || []).map((item: any) => ({
+        id: item.version_id,
+        version: item.version_tag,
+        description: item.manifest_json,
+        status: item.is_active ? 'active' : 'inactive',
+        created_at: item.created_at,
+      }))
+      return mapped
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to fetch versions')
       return []
@@ -81,17 +93,18 @@ export function useProjects() {
     }
   }, [])
 
-  const uploadVersion = useCallback(async (projectId: string, file: File, manifest: Record<string, any>) => {
+  const uploadVersion = useCallback(async (projectId: string, file: File, manifest: Record<string, any>, versionTag: string) => {
     setLoading(true)
     setError(null)
     try {
       const formData = new FormData()
       formData.append('files', file)
       formData.append('manifest', JSON.stringify(manifest))
+      formData.append('version_tag', versionTag)
       const response = await api.post(`${endpoints.projectVersions(projectId)}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      return response.data
+      return response.data.data
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to upload version')
       throw err
@@ -113,6 +126,33 @@ export function useProjects() {
     }
   }, [])
 
+  const updateVersionFile = useCallback(async (projectId: string, versionId: string, filename: string, content: string) => {
+    setLoading(true)
+    setError(null)
+    try {
+      await api.put(endpoints.updateVersionFile(projectId, versionId, filename), { content })
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to update file')
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const createRun = useCallback(async (projectId: string, versionId: string) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await api.post(endpoints.runs, { project_id: projectId, version_id: versionId })
+      return response.data.data
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to create run')
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     fetchProjects()
   }, [fetchProjects])
@@ -127,5 +167,7 @@ export function useProjects() {
     fetchVersions,
     uploadVersion,
     activateVersion,
+    updateVersionFile,
+    createRun,
   }
 }

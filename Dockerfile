@@ -70,18 +70,15 @@ COPY --chown=polyorch:polyorch scripts/supervisord.conf /etc/supervisord.conf
 COPY --chown=polyorch:polyorch scripts/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Copy frontend build if exists
-RUN if [ -d "web/dist" ]; then \
-        cp -r web/dist /app/web && chown -R polyorch:polyorch /app/web; \
-    elif [ -d "web" ] && [ -f "web/package.json" ]; then \
-        echo "Warning: web/dist not found. Run 'make build-frontend' first."; \
-    fi
+# Copy frontend build from the builder stage (where `npm run build` ran)
+COPY --from=builder --chown=polyorch:polyorch /build/web/dist /app/web
+RUN chmod -R a+rX /app/web
 
 # Switch to non-root user
 USER polyorch:polyorch
 
 # Expose only necessary ports
-EXPOSE 8080 4222
+EXPOSE 8082 4222
 
 # Add security labels
 LABEL maintainer="PolyOrch Maintainers"
@@ -94,7 +91,7 @@ LABEL org.opencontainers.image.licenses="MIT"
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+    CMD curl -f http://localhost:8082/health || exit 1
 
 # Use exec form for proper signal handling
 ENTRYPOINT ["/app/entrypoint.sh"]

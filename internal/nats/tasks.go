@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/nats-io/nats.go/jetstream"
-	"github.com/nimish-nirmal/polyorch/internal/worker"
+	"github.com/nimish-nirmal/polyorch/internal/models"
 )
 
 type Manager struct {
@@ -18,7 +18,7 @@ func NewManager(client *Client) *Manager {
 	return &Manager{Client: client}
 }
 
-func (m *Manager) PublishTask(ctx context.Context, payload worker.TaskPayload) error {
+func (m *Manager) PublishTask(ctx context.Context, payload models.TaskPayload) error {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return err

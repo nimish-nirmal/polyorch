@@ -1,0 +1,10 @@
+{
+  "name": "Hello World Turns",
+  "runtime": "python3",
+  "entrypoint": "main.py",
+  "timeout": 60,
+  "env": {
+    "GREETING": "Hello World",
+    "TURNS": "5"
+  }
+}

@@ -149,12 +149,12 @@ version, err := s.DB.CreateVersion(projectID, versionTag, manifestJSON, buf)
 **Before:**
 ```ts
 const isGitHubPages = window.location.hostname.includes('github.io')
-baseURL: isGitHubPages ? 'https://nimish-nirmal.github.io/polyorch/api/v1' : 'http://localhost:8080/api/v1'
+baseURL: isGitHubPages ? 'https://nimish-nirmal.github.io/polyorch/api/v1' : 'http://localhost:8082/api/v1'
 ```
 
 **After:**
 ```ts
-const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8082'
 baseURL: `${apiBase}/api/v1`
 ```
 
@@ -280,26 +280,26 @@ After applying all fixes, verify:
 
 1. **Auth works:**
    ```bash
-   curl -H "X-API-Key: test" http://localhost:8080/api/v1/projects
+   curl -H "X-API-Key: test" http://localhost:8082/api/v1/projects
    # Should return 401 without key, 200 with valid key
    ```
 
 2. **CORS works:**
    ```bash
-   curl -H "Origin: http://localhost:5173" -X OPTIONS http://localhost:8080/api/v1/projects
+   curl -H "Origin: http://localhost:5173" -X OPTIONS http://localhost:8082/api/v1/projects
    # Should return 204 with correct CORS headers
    ```
 
 3. **WebSocket connects:**
    ```bash
    # Start a run, then:
-   wss://localhost:8080/ws/logs/{run_id}
+   wss://localhost:8082/ws/logs/{run_id}
    # Should receive log messages
    ```
 
 4. **File upload works:**
    ```bash
-   curl -X POST http://localhost:8080/api/v1/projects/{id}/versions \
+   curl -X POST http://localhost:8082/api/v1/projects/{id}/versions \
      -F "files=@project.zip" \
      -F "manifest={\"runtime\":\"python3\",\"entrypoint\":\"main.py\"}"
    ```

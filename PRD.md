@@ -21,6 +21,20 @@
 | **Log Aggregation** | Requires ELK, Loki, or CloudWatch | Real-time WebSocket streaming built-in |
 | **Version Management** | External artifact repos, DVC, etc. | Immutable ZIP snapshots in SQLite |
 
+### Product Direction: Lightweight Airflow
+
+PolyOrch is not intended to reproduce the full Apache Airflow platform. It provides the smallest useful set of Airflow-like capabilities for teams that want workflows-as-code, task dependencies, scheduling, run history, and live observability without a separate metadata database, broker cluster, scheduler fleet, or webserver stack.
+
+The core product model is:
+
+* A **project** contains immutable workflow versions.
+* A **workflow version** contains a manifest and one or more tasks.
+* A **DAG run** executes one selected version and records its task states.
+* A **task** is a discrete command with a runtime, timeout, retry policy, and dependencies.
+* The **web UI** is used to inspect, trigger, pause, retry, and debug runs; workflow definitions remain version-controlled code.
+
+PolyOrch should remain API-first, single-container friendly, and understandable on a laptop. Airflow terminology is used where it improves clarity, but PolyOrch will avoid Airflow-specific provider, executor, and deployment complexity unless a future requirement justifies it.
+
 ---
 
 ## 2. Goals & Objectives
@@ -77,9 +91,26 @@
 <!-- Users need to run their code in isolated, monitored environments -->
 
 * **FR-04 (DAG Dependency Resolution):** Go Control Plane must validate visual graph dependencies to prevent circular execution loops before dispatching tasks.
-  - *Planned for Phase 4+*
+    - *Target: Phase 1 of the lightweight Airflow roadmap*
   - *Topological sort of task graph*
   - *Cycle detection with error response*
+    - *A run may start only when all dependencies for a task have succeeded*
+
+* **FR-04a (Workflow-as-Code Manifest):** A workflow version must support a declarative manifest containing workflow metadata and task definitions.
+    - *Required task fields: id, runtime, entrypoint or command*
+    - *Optional fields: depends_on, environment, timeout, retries, retry_delay*
+    - *The manifest is immutable once uploaded and is tied to the selected version*
+
+* **FR-04b (Task Execution):** The worker must execute independent ready tasks and persist task-level state.
+    - *States: queued, running, success, failed, skipped, retrying, cancelled*
+    - *Independent tasks may run concurrently within configured worker limits*
+    - *The workflow run succeeds only when all required tasks succeed*
+    - *A failed task blocks dependent tasks unless the run is explicitly retried*
+
+* **FR-04c (Retries and Reruns):** Operators must be able to retry a failed task or rerun a complete workflow version.
+    - *Retries are bounded by the task retry policy*
+    - *A rerun always records the exact immutable project version used*
+    - *Retry and rerun actions must be visible in run history*
 
 * **FR-05 (Isolated Temp Unpacking):** Each worker execution must unpack code bundles into an isolated ephemeral path (`/tmp/runs/{run_id}`) and clean up on completion.
   - *Implementation: `os.MkdirAll` + `zip.NewReader`*
@@ -90,6 +121,11 @@
   - *Implementation: `exec.CommandContext` with timeout*
   - *Default timeout: 300 seconds*
   - *Configurable per `manifest.json`*
+
+* **FR-06a (Run Selection):** A user must be able to run any uploaded workflow version, regardless of whether it is active.
+    - *The active version is the default for the project-level Run action*
+    - *Each version must expose its own Run action*
+    - *Run details must show the selected version tag and immutable version ID*
 
 ### 3.3 Event Queue & Messaging
 
@@ -104,6 +140,11 @@
   - *Implementation: Worker publishes to `logs.{run_id}`*
   - *API subscribes and forwards to WebSocket clients*
   - *Subject auto-created on first publish*
+
+* **FR-08a (Task Log Streams):** Logs must be attributable to both a workflow run and a task.
+    - *The UI must show logs while a task is running, not only after completion*
+    - *Historical logs remain available after the WebSocket disconnects*
+    - *The log view must indicate connection state and support clearing a run's logs*
 
 ### 3.4 Web IDE & Control Panel
 
@@ -123,6 +164,29 @@
   - *Implementation: `xterm` + `xterm-addon-fit`*
   - *WebSocket connection to `/ws/logs/{run_id}`*
   - *Auto-scroll, dark theme, ANSI color support*
+
+* **FR-12 (Run and Task History):** The UI must provide a scannable history of workflow runs and task states.
+    - *Show selected version, trigger source, start time, finish time, duration, and final status*
+    - *Allow filtering by project, version, and status in a future history view*
+    - *Allow deletion of obsolete runs and their logs*
+
+* **FR-13 (Workflow Graph):** The graph view must display actual task nodes and dependency edges from the selected workflow version.
+    - *Node color and status update while a run is executing*
+    - *The graph must fit responsive containers and remain usable on narrow screens*
+    - *A single-entrypoint workflow is represented as one task, never as an empty graph*
+
+### 3.5 Scheduling and Operations
+
+* **FR-14 (Manual Trigger):** Operators can manually trigger any uploaded version and immediately receive a run ID.
+
+* **FR-15 (Cron Scheduling):** A workflow may define a cron schedule and the scheduler may create runs for the configured version.
+    - *Schedules are paused by default when a project is first created*
+    - *Only one scheduler loop is active in a single-container deployment*
+    - *Missed schedules do not create an unbounded backlog*
+
+* **FR-16 (Pause and Resume):** Operators can pause and resume a workflow schedule without deleting its versions or run history.
+
+* **FR-17 (Health and Cleanup):** The system exposes health for API, database, NATS, and worker readiness and cleans temporary run directories after completion.
 
 ---
 
@@ -154,6 +218,12 @@
   - *Allow all origins by default (configurable)*
   - *Allow methods: GET, POST, PUT, DELETE, OPTIONS*
   - *Allow headers: Content-Type, Authorization*
+
+* **NFR-06 (Understandable Local Operation):** A developer must be able to run the API, worker, NATS, and frontend locally with documented commands and no hidden service dependency.
+
+* **NFR-07 (Deterministic Version Runs):** Every run must reference one immutable version ID; changing the active version must not change an already-created run.
+
+* **NFR-08 (Responsive Observability):** The dashboard, graph, run history, file viewer, and live log console must remain usable from 360px mobile width through desktop layouts without horizontal layout breakage.
 
 ---
 
@@ -196,19 +266,45 @@
 | **Worker Task Throughput** | 10+ tasks/sec | Benchmark with synthetic workloads |
 | **Docker Image Size** | < 200 MB | `docker images polyorch/all-in-one` |
 | **Uptime (with Supervisord)** | 99.9%+ | Process crash → auto-restart in < 1 second |
+| **Task State Freshness** | < 2 seconds | UI reflects worker task state while a run is active |
+| **Version Run Accuracy** | 100% | Run executes the exact selected immutable version |
 
 ---
 
-## 7. Out of Scope (v1.0)
+## 7. Product Roadmap and Scope
 
 <!-- What we are NOT building in the first version -->
 
-- **DAG Dependency Resolution:** Visual graph validation is planned for v1.1+
-- **Scheduled Triggers:** Cron-based scheduling is planned for v1.2+
-- **Authentication & RBAC:** Multi-user support is planned for v1.3+
-- **Cluster Mode:** Horizontal scaling with multiple workers is planned for v2.0+
-- **Plugin System:** Custom runtime plugins are planned for v2.0+
-- **Metrics Export:** Prometheus metrics endpoint is planned for v1.1+
+### Lightweight Airflow MVP
+
+* Declarative multi-task manifest with `depends_on`
+* DAG validation and topological execution
+* Task-level status, duration, retries, and logs
+* Manual runs for any immutable workflow version
+* Responsive graph, run history, and live log views
+* SQLite persistence and NATS JetStream delivery
+
+### Phase 2: Scheduling and Reliability
+
+* Cron schedules with pause/resume
+* Retry failed tasks and rerun failed branches
+* Backfill a bounded date range
+* Run concurrency limits and worker capacity indicators
+* Exportable run and task metadata
+
+### Phase 3: Team and Platform Features
+
+* Roles and project-level access control
+* Prometheus-compatible metrics
+* Notifications and completion callbacks
+* Additional runtime adapters and secrets integration
+
+### Explicitly Out of Scope
+
+* Airflow provider compatibility or Airflow DAG import compatibility
+* A distributed scheduler or multi-region control plane
+* Kubernetes-native executor management
+* Replacing a full data catalog, lineage system, or warehouse
 
 ---
 
@@ -229,3 +325,4 @@
 | Version | Date | Author | Changes |
 | :--- | :--- | :--- | :--- |
 | 1.0 | 2026-08-21 | PolyOrch Team | Initial PRD with core requirements |
+| 1.1 | 2026-08-27 | PolyOrch Team | Added lightweight Airflow product direction, multi-task DAG requirements, scheduling roadmap, version selection, task observability, and responsive UI requirements |

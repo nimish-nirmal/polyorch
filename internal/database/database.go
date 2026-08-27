@@ -39,6 +39,10 @@ func Open(dbPath string) (*DB, error) {
 		return nil, err
 	}
 
+	if err := seedDefaultProject(conn); err != nil {
+		return nil, err
+	}
+
 	return &DB{Conn: conn}, nil
 }
 
@@ -59,6 +63,47 @@ func seedDefaultUser(conn *sql.DB) error {
 	_, err = conn.Exec(
 		"INSERT INTO users (username, password_hash, must_reset) VALUES (?, ?, ?)",
 		"admin", string(hash), true,
+	)
+	return err
+}
+
+func seedDefaultProject(conn *sql.DB) error {
+	var count int
+	if err := conn.QueryRow("SELECT COUNT(*) FROM projects").Scan(&count); err != nil {
+		return err
+	}
+
+	projectID := "proj-hello-world-turns"
+	now := "2026-08-21T23:49:00Z"
+
+	if count == 0 {
+		_, err := conn.Exec(
+			"INSERT OR IGNORE INTO projects (project_id, name, description, created_at) VALUES (?, ?, ?, ?)",
+			projectID, "Hello World Turns", "Sample project that prints Hello World with configurable turn intervals", now,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	zipBytes, err := packEmbeddedSample()
+	if err != nil {
+		return err
+	}
+
+	manifest := `{"name":"Hello World Turns","runtime":"python3","entrypoint":"main.py","timeout":60,"env":{"GREETING":"Hello World","TURNS":"5","INTERVAL_SECONDS":"1"}}`
+
+	if _, err = conn.Exec(
+		"INSERT OR IGNORE INTO project_versions (version_id, project_id, version_tag, manifest_json, files_bundle, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		"ver-hello-world-v1", projectID, "v1.0.0", manifest, zipBytes, true, now,
+	); err != nil {
+		return err
+	}
+
+	manifestV2 := `{"name":"Hello World Turns - Slow Demo","runtime":"python3","entrypoint":"main.py","timeout":60,"env":{"GREETING":"Running every 2 seconds","TURNS":"3","INTERVAL_SECONDS":"2"}}`
+	_, err = conn.Exec(
+		"INSERT OR IGNORE INTO project_versions (version_id, project_id, version_tag, manifest_json, files_bundle, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		"ver-hello-world-v2", projectID, "v1.1.0", manifestV2, zipBytes, false, "2026-08-22T23:49:00Z",
 	)
 	return err
 }

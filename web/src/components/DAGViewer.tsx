@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import ReactFlow, {
   Background,
   Controls,
@@ -9,6 +9,7 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   BackgroundVariant,
+  ReactFlowInstance,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 
@@ -95,15 +96,25 @@ export default function DAGViewer({ tasks = [] }: DAGViewerProps) {
     return edges
   }, [tasks])
 
-  const [nodes, , onNodesChange] = useNodesState(initialNodes)
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges)
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+  const flowInstanceRef = useRef<ReactFlowInstance | null>(null)
 
-  const onInit = useCallback(() => {
-    // React Flow initialized
+  useEffect(() => {
+    setNodes(initialNodes)
+    setEdges(initialEdges)
+    requestAnimationFrame(() => flowInstanceRef.current?.fitView({ padding: 0.25, duration: 200 }))
+  }, [initialNodes, initialEdges, setNodes, setEdges])
+
+  const onInit = useCallback((instance: ReactFlowInstance) => {
+    flowInstanceRef.current = instance
+    const fit = () => instance.fitView({ padding: 0.35, minZoom: 0.5, maxZoom: 1.25, duration: 200 })
+    requestAnimationFrame(fit)
+    window.setTimeout(fit, 100)
   }, [])
 
   return (
-    <div className="h-[500px] w-full bg-dark-900 rounded-lg border border-dark-700 overflow-hidden">
+    <div className="relative h-[500px] min-w-0 w-full rounded-lg border border-dark-700 bg-dark-900 overflow-hidden">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -112,6 +123,9 @@ export default function DAGViewer({ tasks = [] }: DAGViewerProps) {
         onInit={onInit}
         nodeTypes={nodeTypes}
         fitView
+        fitViewOptions={{ padding: 0.25 }}
+        minZoom={0.5}
+        maxZoom={1.25}
         attributionPosition="bottom-left"
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#334155" />

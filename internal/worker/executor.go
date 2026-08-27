@@ -9,7 +9,7 @@ import (
 func buildCommand(runtime, entrypoint, workdir string) (*exec.Cmd, error) {
 	switch strings.ToLower(runtime) {
 	case "python", "python3":
-		return exec.Command("python3", entrypoint), nil
+		return exec.Command("python3", "-u", entrypoint), nil
 	case "node", "javascript":
 		return exec.Command("node", entrypoint), nil
 	case "bash", "shell":

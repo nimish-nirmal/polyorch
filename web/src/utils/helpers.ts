@@ -1,5 +1,7 @@
 export function formatDate(date: string | Date): string {
+  if (!date || (typeof date === 'string' && !date.trim())) return '-'
   const d = new Date(date)
+  if (Number.isNaN(d.getTime())) return '-'
   return d.toLocaleString('en-US', {
     year: 'numeric',
     month: 'short',

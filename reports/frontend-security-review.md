@@ -213,12 +213,12 @@ headers: {
 **Before:**
 ```ts
 const isGitHubPages = window.location.hostname.includes('github.io')
-baseURL: isGitHubPages ? 'https://…github.io/polyorch/api/v1' : 'http://localhost:8080/api/v1'
+baseURL: isGitHubPages ? 'https://…github.io/polyorch/api/v1' : 'http://localhost:8082/api/v1'
 ```
 
 **After:**
 ```ts
-const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8082'
 baseURL: `${apiUrl}/api/v1`
 ```
 

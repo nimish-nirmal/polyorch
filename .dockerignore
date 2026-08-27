@@ -9,3 +9,7 @@ docs
 .env*
 .gitignore
 .agents
+data/
+*.db
+*.db-wal
+*.db-shm

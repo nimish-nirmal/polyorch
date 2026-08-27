@@ -5,7 +5,7 @@ import { formatDate } from '../utils/helpers'
 
 function StatCard({ title, value, icon, trend, color }: { title: string; value: string | number; icon: React.ReactNode; trend?: string; color: string }) {
   return (
-    <div className="bg-dark-900 rounded-xl border border-dark-700 p-6 hover:border-dark-600 transition-colors">
+    <div className="group rounded-xl border border-dark-700 bg-dark-900/90 p-5 transition-colors hover:border-dark-500">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-dark-400">{title}</p>
@@ -16,7 +16,7 @@ function StatCard({ title, value, icon, trend, color }: { title: string; value: 
             </p>
           )}
         </div>
-        <div className={`p-3 rounded-lg ${color}`}>{icon}</div>
+        <div className={`rounded-lg p-3 ${color} transition-transform group-hover:-translate-y-0.5`}>{icon}</div>
       </div>
     </div>
   )
@@ -77,13 +77,14 @@ export default function Dashboard() {
   const totalProjects = projects.length
   const activeRuns = runs.filter((r) => r.status === 'running' || r.status === 'pending').length
   const successRuns = runs.filter((r) => r.status === 'success').length
+  const pendingRuns = runs.filter((r) => r.status === 'pending').length
   const successRate = runs.length > 0 ? Math.round((successRuns / runs.length) * 100) : 0
 
   const stats = [
     { title: 'Total Projects', value: totalProjects.toString(), icon: <DashboardIcon />, color: 'bg-blue-600/20' },
     { title: 'Active Runs', value: activeRuns.toString(), icon: <RunIcon />, color: 'bg-green-600/20' },
     { title: 'Success Rate', value: `${successRate}%`, icon: <SuccessIcon />, color: 'bg-green-600/20' },
-    { title: 'Queue Depth', value: '0', icon: <QueueIcon />, color: 'bg-yellow-600/20' },
+    { title: 'Queue Depth', value: pendingRuns.toString(), icon: <QueueIcon />, color: 'bg-yellow-600/20' },
   ]
 
   const getStatusColor = (status: string) => {
@@ -103,22 +104,26 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-dark-400 mt-1">Overview of your PolyOrch orchestrator</p>
+          <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-blue-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+            Control plane online
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Good to see you.</h1>
+          <p className="mt-1 text-dark-400">A clear view of your workflows, versions, and execution health.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 sm:justify-end">
           <Link
             to="/projects"
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-blue-950/30 transition-colors hover:bg-blue-500"
           >
             <PlusIcon />
             New Project
           </Link>
           <Link
             to="/runs"
-            className="flex items-center gap-2 px-4 py-2 bg-dark-800 text-dark-200 rounded-lg hover:bg-dark-700 transition-colors text-sm font-medium border border-dark-600"
+            className="flex items-center gap-2 rounded-lg border border-dark-600 bg-dark-800 px-4 py-2 text-sm font-medium text-dark-200 transition-colors hover:bg-dark-700"
           >
             <DocumentIcon />
             View Logs
@@ -126,15 +131,19 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (
           <StatCard key={stat.title} {...stat} />
         ))}
       </div>
 
-      <div className="bg-dark-900 rounded-xl border border-dark-700">
-        <div className="p-6 border-b border-dark-700">
-          <h2 className="text-lg font-semibold text-white">Recent Runs</h2>
+      <div className="overflow-hidden rounded-xl border border-dark-700 bg-dark-900/90">
+        <div className="flex flex-col gap-2 border-b border-dark-700 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-white">Recent runs</h2>
+            <p className="mt-1 text-sm text-dark-500">The latest activity across every workflow version.</p>
+          </div>
+          <Link to="/runs" className="text-sm font-medium text-blue-400 hover:text-blue-300">View all runs</Link>
         </div>
         {runsLoading ? (
           <div className="p-6 text-center text-dark-400">Loading runs...</div>
@@ -147,27 +156,27 @@ export default function Dashboard() {
             <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-dark-400 border-b border-dark-700">
-                  <th className="px-6 py-3 font-medium">Run ID</th>
-                  <th className="px-6 py-3 font-medium">Version ID</th>
-                  <th className="px-6 py-3 font-medium">Status</th>
-                  <th className="px-6 py-3 font-medium">Started At</th>
+                  <th className="px-5 py-3 font-medium">Run ID</th>
+                  <th className="px-5 py-3 font-medium">Version</th>
+                  <th className="px-5 py-3 font-medium">Status</th>
+                  <th className="px-5 py-3 font-medium">Started</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-dark-700">
                 {runs.slice(0, 10).map((run) => (
                   <tr key={run.id} className="hover:bg-dark-800/50 transition-colors">
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-4">
                       <Link to={`/runs/${run.id}`} className="text-blue-400 hover:text-blue-300 font-mono text-sm">
                         {run.id}
                       </Link>
                     </td>
-                    <td className="px-6 py-4 text-white font-mono text-sm">{run.version}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-4 text-sm font-mono text-white">{run.version}</td>
+                    <td className="px-5 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(run.status)}`}>
                         {run.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-dark-400 text-sm">
+                    <td className="px-5 py-4 text-sm text-dark-400">
                       {run.started_at ? formatDate(run.started_at) : '-'}
                     </td>
                   </tr>

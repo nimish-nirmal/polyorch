@@ -86,6 +86,7 @@ export default function Login() {
                 placeholder="admin"
                 required
                 autoFocus
+                autoComplete="username"
               />
             </div>
 
@@ -98,6 +99,7 @@ export default function Login() {
                 className="w-full px-4 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
                 placeholder="password"
                 required
+                autoComplete="current-password"
               />
             </div>
 

@@ -10,7 +10,7 @@ import (
 func CORS() gin.HandlerFunc {
 	allowedOrigins := []string{
 		"http://localhost:5173",
-		"http://localhost:8080",
+		"http://localhost:8082",
 		"https://nimish-nirmal.github.io",
 	}
 

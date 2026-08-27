@@ -22,23 +22,18 @@ import (
 )
 
 type Engine struct {
-	DB       Store
-	JS       jetstream.JetStream
-	NC       *nats.Conn
-	TmpDir   string
-	Timeout  time.Duration
-	Logger   *zerolog.Logger
+	DB      Store
+	JS      jetstream.JetStream
+	NC      *nats.Conn
+	TmpDir  string
+	Timeout time.Duration
+	Logger  *zerolog.Logger
 }
 
 type Store interface {
 	GetVersion(versionID string) (*models.ProjectVersion, error)
 	UpdateRunStatus(runID, status string, finishedAt *time.Time) error
 	InsertLog(runID, streamType, message string) error
-}
-
-type TaskPayload struct {
-	RunID     string `json:"run_id"`
-	VersionID string `json:"version_id"`
 }
 
 func NewEngine(db Store, js jetstream.JetStream, nc *nats.Conn, tmpDir string, timeout time.Duration, logger *zerolog.Logger) *Engine {
@@ -62,7 +57,11 @@ func (e *Engine) Consume(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer iter.Stop()
+
+	go func() {
+		<-ctx.Done()
+		iter.Stop()
+	}()
 
 	for {
 		select {
@@ -88,7 +87,7 @@ func (e *Engine) HandleTask(msg jetstream.Msg) {
 	}()
 
 	data := msg.Data()
-	var payload TaskPayload
+	var payload models.TaskPayload
 	if err := json.Unmarshal(data, &payload); err != nil {
 		e.Logger.Error().Err(err).Msg("failed to parse payload")
 		msg.Ack()
@@ -225,7 +224,9 @@ func streamOutput(reader io.Reader, runID, streamType string, engine *Engine) {
 		engine.DB.InsertLog(runID, streamType, line)
 		if engine.NC != nil {
 			subject := fmt.Sprintf("logs.%s", runID)
-			_ = engine.NC.Publish(subject, []byte(line))
+			if err := engine.NC.Publish(subject, []byte(line)); err == nil {
+				_ = engine.NC.FlushTimeout(100 * time.Millisecond)
+			}
 		}
 	}
 }

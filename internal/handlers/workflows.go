@@ -10,7 +10,7 @@ type WorkflowResponse struct {
 }
 
 type LogStreamMessage struct {
-	RunID    string `json:"run_id"`
-	Stream   string `json:"stream"`
-	Message  string `json:"message"`
+	RunID   string `json:"run_id"`
+	Stream  string `json:"stream"`
+	Message string `json:"message"`
 }

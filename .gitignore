@@ -1,14 +1,39 @@
 bin/
 dist/
 node_modules/
-.DS_Store
+web/node_modules/
+web/dist/
+
+# Compiled binaries
+/api
+/worker
+/polyorch-api
+/polyorch-worker
+
+# Runtime data
 *.db
 *.db-wal
 *.db-shm
+/data/
 /tmp/runs/
+
+# Environment
 .env
 .env.local
+web/.env.local
+web/.env
+
+# IDE / Editor
 .vscode/
 .idea/
-web/.env.local
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Other
 .agents
+.agents/

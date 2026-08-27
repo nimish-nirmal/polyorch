@@ -1,25 +1,16 @@
-import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useRuns } from '../hooks/useRuns'
 import type { RunDetail } from '../hooks/useRuns'
-import { formatDate } from '../utils/helpers'
 import DAGViewer from '../components/DAGViewer'
 import Terminal from '../components/Terminal'
+import { api, endpoints } from '../services/api'
 
 function PlayIcon() {
   return (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  )
-}
-
-function StopIcon() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
     </svg>
   )
 }
@@ -65,19 +56,110 @@ function getStatusColor(status: string) {
 
 export default function RunDetail() {
   const { id } = useParams<{ id: string }>()
-  const { fetchRunDetail } = useRuns()
+  const { fetchRunDetail, fetchRunLogs, deleteRun } = useRuns()
+  const navigate = useNavigate()
   const [run, setRun] = useState<RunDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'dag' | 'logs' | 'tasks'>('dag')
+  const [activeTab, setActiveTab] = useState<'dag' | 'logs' | 'files'>('logs')
+  const [versionFiles, setVersionFiles] = useState<string[]>([])
+  const [selectedFile, setSelectedFile] = useState<{ name: string; content: string } | null>(null)
+  const [loadingFiles, setLoadingFiles] = useState(false)
+  const filesLoadedVersionRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!id) return
     setLoading(true)
-    fetchRunDetail(id).then((detail) => {
+    fetchRunDetail(id).then((detail: RunDetail | null) => {
       if (detail) setRun(detail)
       setLoading(false)
     })
   }, [id, fetchRunDetail])
+
+  useEffect(() => {
+    if (!id || !run) return
+    const interval = setInterval(() => {
+      fetchRunDetail(id).then((detail: RunDetail | null) => {
+        if (detail) setRun(detail)
+      })
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [id, run?.status, fetchRunDetail])
+
+  const handleStart = async () => {
+    if (!id || !run) return
+    try {
+      await api.post(`${endpoints.runs}/${id}/start`)
+      fetchRunDetail(id).then((detail) => {
+        if (detail) setRun(detail)
+      })
+    } catch (err: any) {
+      // 409 => the run was already started/completed; nothing to do.
+      if (err?.response?.status === 409) {
+        fetchRunDetail(id).then((detail) => {
+          if (detail) setRun(detail)
+        })
+        return
+      }
+      console.error('Failed to start run:', err)
+    }
+  }
+
+  const handleViewFiles = async () => {
+    if (!run) return
+    setActiveTab('files')
+  }
+
+  const handleLoadVersionFiles = useCallback(async () => {
+    if (!run || !run.version_id) return
+    if (filesLoadedVersionRef.current === run.version_id) return
+    setLoadingFiles(true)
+    try {
+      const files = await api.get(endpoints.versionFiles(run.project_id, run.version_id))
+      setVersionFiles(files.data.data || [])
+      filesLoadedVersionRef.current = run.version_id
+    } catch (err) {
+      console.error('Failed to load version files:', err)
+    } finally {
+      setLoadingFiles(false)
+    }
+  }, [run?.version_id, run?.project_id])
+
+  const handleOpenFile = async (filename: string) => {
+    if (!run || !run.version_id) return
+    try {
+      const res = await api.get(endpoints.versionFile(run.project_id, run.version_id, filename))
+      setSelectedFile({ name: filename, content: res.data.data?.content || '' })
+    } catch (err) {
+      console.error('Failed to open file:', err)
+    }
+  }
+
+  const handleClearLogs = async () => {
+    if (!id) return
+    if (!confirm('Clear all logs for this run?')) return
+    try {
+      await api.delete(`${endpoints.runs}/${id}/logs`)
+      fetchRunLogs(id).then(() => {})
+    } catch (err) {
+      console.error('Failed to clear logs:', err)
+    }
+  }
+
+  const handleDeleteRun = async () => {
+    if (!id || !confirm('Delete this run and all of its logs?')) return
+    try {
+      await deleteRun(id)
+      navigate('/runs')
+    } catch (err) {
+      console.error('Failed to delete run:', err)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === 'files' && run?.version_id) {
+      handleLoadVersionFiles()
+    }
+  }, [activeTab, run?.version_id, handleLoadVersionFiles])
 
   if (loading) {
     return (
@@ -100,34 +182,38 @@ export default function RunDetail() {
     : null
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 flex-1 flex flex-col">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-2 text-dark-400 text-sm mb-1">
             <Link to="/runs" className="hover:text-white transition-colors">Runs</Link>
             <span>/</span>
             <span className="text-white font-mono">{run.id}</span>
           </div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white">Run {run.id}</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="break-all text-2xl font-bold text-white">Run {run.id}</h1>
             <span className={`text-lg font-semibold capitalize ${getStatusColor(run.status)}`}>
               {run.status}
             </span>
           </div>
         </div>
-        <div className="flex gap-3">
-          {run.status === 'running' && (
-            <button className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm">
-              <StopIcon />
-              Stop
-            </button>
-          )}
+        <div className="flex flex-wrap gap-3">
           {run.status === 'pending' && (
-            <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
+            <button onClick={handleStart} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
               <PlayIcon />
               Start
             </button>
           )}
+          <button onClick={handleViewFiles} className="flex items-center gap-2 px-4 py-2 bg-dark-700 text-white rounded-lg hover:bg-dark-600 transition-colors text-sm">
+            <CodeIcon />
+            View Files
+          </button>
+          <button onClick={handleClearLogs} className="flex items-center gap-2 px-4 py-2 bg-dark-700 text-white rounded-lg hover:bg-dark-600 transition-colors text-sm">
+            Clear Logs
+          </button>
+          <button onClick={handleDeleteRun} className="flex items-center gap-2 px-4 py-2 bg-red-600/20 text-red-300 rounded-lg hover:bg-red-600/30 transition-colors text-sm">
+            Delete Run
+          </button>
         </div>
       </div>
 
@@ -153,7 +239,7 @@ export default function RunDetail() {
             <CodeIcon />
             <span className="text-sm">Version</span>
           </div>
-          <p className="text-xl font-semibold text-white font-mono">v{run.version}</p>
+          <p className="text-xl font-semibold text-white font-mono">{run.version}</p>
         </div>
         <div className="bg-dark-900 rounded-xl border border-dark-700 p-4">
           <div className="flex items-center gap-2 text-dark-400 mb-1">
@@ -164,9 +250,9 @@ export default function RunDetail() {
         </div>
       </div>
 
-      <div className="bg-dark-900 rounded-xl border border-dark-700">
+      <div className="bg-dark-900 rounded-xl border border-dark-700 flex-1 flex flex-col">
         <div className="flex border-b border-dark-700">
-          {(['dag', 'logs', 'tasks'] as const).map((tab) => (
+          {(['dag', 'logs', 'files'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -176,31 +262,52 @@ export default function RunDetail() {
                   : 'text-dark-400 hover:text-white'
               }`}
             >
-              {tab === 'dag' ? 'DAG View' : tab === 'logs' ? 'Logs' : 'Tasks'}
+              {tab === 'dag' ? 'DAG View' : tab === 'logs' ? 'Logs' : 'Files'}
             </button>
           ))}
         </div>
-        <div className="p-6">
+        <div className="min-w-0 p-4 sm:p-6 flex-1 overflow-y-auto">
           {activeTab === 'dag' && <DAGViewer tasks={run.tasks} />}
           {activeTab === 'logs' && <Terminal runId={run.id} />}
-          {activeTab === 'tasks' && (
+          {activeTab === 'files' && (
             <div>
-              {run.tasks && run.tasks.length > 0 ? (
-                <div className="space-y-2">
-                  {run.tasks.map((task) => (
-                    <div key={task.id} className="flex items-center justify-between p-3 bg-dark-800 rounded-lg">
-                      <div>
-                        <p className="text-white font-medium">{task.name}</p>
-                        <p className="text-sm text-dark-400 capitalize">{task.status}</p>
-                      </div>
-                      {task.started_at && (
-                        <p className="text-sm text-dark-400">{formatDate(task.started_at)}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
+              {loadingFiles ? (
+                <p className="text-dark-400 text-center py-8">Loading files...</p>
+              ) : versionFiles.length === 0 ? (
+                <p className="text-dark-400 text-center py-8">No files available</p>
               ) : (
-                <p className="text-dark-400 text-center py-8">No tasks available</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-1 bg-dark-800 rounded-lg border border-dark-700 p-4">
+                    <h3 className="text-sm font-medium text-white mb-3">Files</h3>
+                    <div className="space-y-1">
+                      {versionFiles.map((file) => (
+                        <button
+                          key={file}
+                          onClick={() => handleOpenFile(file)}
+                          className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                            selectedFile?.name === file
+                              ? 'bg-blue-600/20 text-blue-400'
+                              : 'text-dark-300 hover:text-white hover:bg-dark-700'
+                          }`}
+                        >
+                          {file}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="md:col-span-2 bg-dark-800 rounded-lg border border-dark-700 p-4">
+                    {selectedFile ? (
+                      <>
+                        <h3 className="text-sm font-medium text-white mb-3">{selectedFile.name}</h3>
+                        <pre className="text-sm text-dark-300 bg-dark-900 p-4 rounded-lg overflow-auto max-h-96 whitespace-pre-wrap">
+                          {selectedFile.content}
+                        </pre>
+                      </>
+                    ) : (
+                      <p className="text-dark-400 text-center py-8">Select a file to view its contents</p>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           )}

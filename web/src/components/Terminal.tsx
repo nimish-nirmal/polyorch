@@ -4,6 +4,7 @@ import { FitAddon } from 'xterm-addon-fit'
 import 'xterm/css/xterm.css'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { wsBase } from '../services/api'
+import { api, endpoints } from '../services/api'
 
 interface TerminalProps {
   runId: string
@@ -14,7 +15,7 @@ export default function Terminal({ runId }: TerminalProps) {
   const terminalRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const wsBaseUrl = typeof window !== 'undefined'
-    ? `${wsBase}/ws/logs/${runId}`
+    ? `${wsBase}/api/v1/ws/logs/${runId}`
     : null
 
   const handleMessage = useCallback((data: string) => {
@@ -65,25 +66,66 @@ export default function Terminal({ runId }: TerminalProps) {
 
     const fitAddon = new FitAddon()
     terminal.loadAddon(fitAddon)
-    terminal.open(containerRef.current)
-    fitAddon.fit()
-
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
 
+    const container = containerRef.current
+    terminal.open(container)
+
+    let frameId: number | null = null
+    const fitTerminal = () => {
+      if (
+        terminalRef.current !== terminal ||
+        !container.isConnected ||
+        container.clientWidth === 0 ||
+        container.clientHeight === 0
+      ) return
+
+      try {
+        fitAddon.fit()
+      } catch (error) {
+        // xterm can briefly have no renderer dimensions during remounts.
+        console.debug('Terminal resize skipped during remount', error)
+      }
+    }
+
+    const scheduleFit = () => {
+      if (frameId !== null) cancelAnimationFrame(frameId)
+      frameId = requestAnimationFrame(() => {
+        frameId = null
+        fitTerminal()
+      })
+    }
+
+    scheduleFit()
+
     terminal.writeln(`\x1b[1;36m[PolyOrch]\x1b[0m Connecting to run ${runId}...`)
 
-    const handleResize = () => {
-      fitAddon.fit()
-    }
-    window.addEventListener('resize', handleResize)
+    const resizeObserver = new ResizeObserver(scheduleFit)
+    resizeObserver.observe(container)
+    window.addEventListener('resize', scheduleFit)
 
     return () => {
-      window.removeEventListener('resize', handleResize)
-      terminal.dispose()
+      window.removeEventListener('resize', scheduleFit)
+      resizeObserver.disconnect()
+      if (frameId !== null) cancelAnimationFrame(frameId)
       terminalRef.current = null
       fitAddonRef.current = null
+      terminal.dispose()
     }
+  }, [runId])
+
+  useEffect(() => {
+    if (!runId) return
+    api.get(endpoints.runLogs(runId)).then((res) => {
+      const logs = res.data.data || []
+      if (terminalRef.current && logs.length > 0) {
+        logs.forEach((log: any) => {
+          const sanitized = log.message.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '')
+          terminalRef.current?.writeln(sanitized)
+        })
+      }
+    }).catch(() => {})
   }, [runId])
 
   return (

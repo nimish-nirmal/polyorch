@@ -80,10 +80,11 @@ export default function Projects() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Projects</h1>
-          <p className="text-dark-400 mt-1">Manage your workflow projects</p>
+          <div className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-blue-400">Workflow registry</div>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Projects</h1>
+          <p className="mt-1 text-dark-400">Versioned workflows ready to inspect, activate, or run.</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
@@ -120,9 +121,9 @@ export default function Projects() {
           {projects.map((project) => (
             <div
               key={project.id}
-              className="bg-dark-900 rounded-xl border border-dark-700 p-6 hover:border-dark-600 transition-colors group"
+              className="group rounded-xl border border-dark-700 bg-dark-900/90 p-6 transition-colors hover:border-dark-500"
             >
-              <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 cursor-pointer" onClick={() => navigate(`/projects/${project.id}`)}>
                   <h3 className="text-lg font-semibold text-white group-hover:text-blue-400 transition-colors">
                     {project.name}
@@ -136,7 +137,7 @@ export default function Projects() {
                     e.stopPropagation()
                     handleDelete(project.id, project.name)
                   }}
-                  className="p-2 text-dark-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                  className="rounded-lg p-2 text-dark-400 transition-colors hover:bg-red-500/10 hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"
                   title="Delete project"
                 >
                   <TrashIcon />

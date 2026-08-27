@@ -31,13 +31,13 @@ func (h *Handler) ServeHTTP(c *gin.Context) {
 	}
 
 	conn, err := (&websocket.Upgrader{
-		ReadBufferSize:    1024,
-		WriteBufferSize:   1024,
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
 			allowedOrigins := []string{
 				"http://localhost:5173",
-				"http://localhost:8080",
+				"http://localhost:8082",
 				"https://nimish-nirmal.github.io",
 			}
 			for _, allowed := range allowedOrigins {

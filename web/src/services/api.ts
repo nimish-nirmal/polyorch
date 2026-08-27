@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8080'
-const wsBase = import.meta.env.VITE_WS_URL || 'ws://localhost:8080'
+const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8082'
+const wsBase = import.meta.env.VITE_WS_URL || 'ws://localhost:8082'
 
 export const api = axios.create({
   baseURL: `${apiBase}/api/v1`,
@@ -22,7 +22,9 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('polyorch_token')
-      window.location.href = '/login'
+      // Stay inside the SPA's base path (vite base: /polyorch/). Redirecting to
+      // bare '/login' would land outside the router basename and render blank.
+      window.location.href = `${import.meta.env.BASE_URL}login`
     }
     return Promise.reject(error)
   }
@@ -33,6 +35,9 @@ export const endpoints = {
   projectVersions: (id: string) => `/projects/${encodeURIComponent(id)}/versions`,
   runs: '/runs',
   runLogs: (id: string) => `/runs/${encodeURIComponent(id)}/logs`,
+  versionFiles: (projectId: string, versionId: string) => `/projects/${encodeURIComponent(projectId)}/versions/${encodeURIComponent(versionId)}/files`,
+  versionFile: (projectId: string, versionId: string, filename: string) => `/projects/${encodeURIComponent(projectId)}/versions/${encodeURIComponent(versionId)}/files/${filename.split('/').map(encodeURIComponent).join('/')}`,
+  updateVersionFile: (projectId: string, versionId: string, filename: string) => `/projects/${encodeURIComponent(projectId)}/versions/${encodeURIComponent(versionId)}/files/${filename.split('/').map(encodeURIComponent).join('/')}`,
 } as const
 
 export { apiBase, wsBase }

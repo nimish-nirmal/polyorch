@@ -27,10 +27,10 @@ cd polyorch
 docker compose up -d
 
 # 2. Verify it's running
-curl http://localhost:8080/health
+curl http://localhost:8082/health
 
 # 3. Open browser
-# Navigate to: http://localhost:8080
+# Navigate to: http://localhost:8082
 ```
 
 ---
@@ -127,7 +127,7 @@ def transform(record):
 
 ### Step 1: Create Project (2 min)
 
-1. Navigate to **http://localhost:8080**
+1. Navigate to **http://localhost:8082**
 2. Click **Projects** in the sidebar
 3. Click **New Project**
 4. Fill in:
@@ -238,7 +238,7 @@ def transform(record):
 
 ### Step 7: Inspect API (2 min)
 
-Open **http://localhost:8080/swagger/index.html** to explore the REST API:
+Open **http://localhost:8082/swagger/index.html** to explore the REST API:
 
 | Endpoint | Method | Description |
 | :--- | :--- | :--- |

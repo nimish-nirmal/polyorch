@@ -2,15 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: dark;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  background: #070b14;
+  --surface: #101827;
+  --surface-raised: #172235;
+  --line: #26354d;
+  --muted: #8ca0bb;
+  --accent: #61a8ff;
+}
+
 body {
   margin: 0;
-  background-color: #0f172a;
+  min-width: 320px;
+  background-color: #070b14;
+  background-image: linear-gradient(rgba(97, 168, 255, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(97, 168, 255, 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
   color: #e2e8f0;
-  font-family: system-ui, -apple-system, sans-serif;
 }
 
 #root {
   min-height: 100vh;
+}
+
+button,
+a,
+input,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(97, 168, 255, 0.28);
 }
 
 .xterm {
@@ -40,6 +72,38 @@ body {
   border: 1px solid #334155 !important;
   border-radius: 8px !important;
   padding: 8px !important;
+}
+
+.react-flow__controls {
+  overflow: hidden;
+  border: 1px solid #475569 !important;
+  border-radius: 8px !important;
+  background: #1e293b !important;
+  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.35);
+}
+
+.react-flow__controls-button {
+  width: 34px !important;
+  height: 34px !important;
+  border: 0 !important;
+  border-bottom: 1px solid #475569 !important;
+  background: #1e293b !important;
+  fill: #e2e8f0 !important;
+  color: #e2e8f0 !important;
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: 0 !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #334155 !important;
+}
+
+.react-flow__controls-button svg {
+  fill: currentColor !important;
+  max-width: 16px;
+  max-height: 16px;
 }
 
 .react-flow__attribution {

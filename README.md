@@ -38,7 +38,7 @@ A lightweight, production-ready polyglot DAG orchestrator built with Go, NATS Je
 git clone https://github.com/nimish-nirmal/polyorch.git
 cd polyorch
 docker compose up -d
-curl http://localhost:8080/health
+curl http://localhost:8082/health
 ```
 
 ### Option 2: Local Development
@@ -69,8 +69,14 @@ You will be prompted to change the default password on first login.
 ### Environment Variables
 | Variable | Description | Default |
 | :--- | :--- | :--- |
+| `POLYORCH_API_KEY` | API key for auth (set to empty to disable) | `changeme` |
 | `POLYORCH_AUTH_BYPASS` | Skip authentication (local dev only) | `false` |
-| `POLYORCH_API_KEY` | Legacy API key (deprecated) | `""` |
+| `POLYORCH_PORT` | HTTP listen port | `8082` |
+| `POLYORCH_DB_PATH` | SQLite database path | `./polyorch.db` |
+| `POLYORCH_NATS_URL` | NATS server URL | `nats://localhost:4222` |
+| `POLYORCH_RUNS_TMP_DIR` | Temp directory for run payloads | `/tmp/runs` |
+| `POLYORCH_LOG_LEVEL` | Log level (debug/info/warn/error) | `info` |
+| `SWAGGER_ENABLED` | Enable Swagger UI at `/swagger` | `false` |
 
 **Local Development Bypass:**
 ```bash
@@ -148,7 +154,7 @@ Push changes to `web/` on `main` branch to auto-deploy frontend:
 Push to `main` or tag `v*` to build and push:
 ```bash
 docker pull polyorch/all-in-one:latest
-docker run -d -p 8080:8080 -v polyorch_data:/data polyorch/all-in-one:latest
+docker run -d -p 8082:8082 -p 4222:4222 -v polyorch_data:/data polyorch/all-in-one:latest
 ```
 
 ### Local Docker
@@ -286,7 +292,7 @@ Everything runs isolated inside one Docker container managed by Supervisord:
 ```mermaid
 flowchart TD
     subgraph Container ["Single Docker Container: polyorch/all-in-one"]
-        UI["ReactJS Frontend Assets<br/>(Embedded / Served on :8080)"] <-->|HTTP / WebSockets| API["Go Core API Server<br/>(Gin Framework)"]
+        UI["ReactJS Frontend Assets<br/>(Embedded / Served on :8082)"] <-->|HTTP / WebSockets| API["Go Core API Server<br/>(Gin Framework)"]
         
         API <--> DB[("SQLite Database<br/>/data/polyorch.db (WAL Mode)")]
         API <-->|Publish Tasks| NATS["NATS Server<br/>(JetStream Engine)"]
@@ -300,12 +306,12 @@ flowchart TD
         ProcessManager -->|Monitors & Restarts| Worker
     end
 
-    Client["Browser / User"] <==>|Port 8080| UI
+    Client["Browser / User"] <==>|Port 8082| UI
 ```
 
 **Architecture layers:**
 1. **Process Management Layer** — Supervisord (PID 1) monitors and auto-restarts crashed processes
-2. **Control & Presentation Layer** — Go API (Gin) + React frontend served on `:8080`
+2. **Control & Presentation Layer** — Go API (Gin) + React frontend served on `:8082`
 3. **Event Broker Layer** — NATS JetStream on `:4222` for task queues and log streaming
 4. **Execution Engine Layer** — Go Worker consumes tasks, unpacks ZIPs, runs subprocesses
 
@@ -367,21 +373,22 @@ polyorch/
 │   ├── package.json              #   Exact versions locked
 │   ├── package-lock.json         #   npm lockfile
 │   ├── vite.config.ts            #   Vite config (GitHub Pages base path)
-│   └── tailwind.config.js        #   Tailwind CSS config
+│   ├── tailwind.config.cjs       #   Tailwind CSS config
+│   └── postcss.config.cjs        #   PostCSS config
 ├── scripts/                      # Build and deployment scripts
 │   ├── entrypoint.sh             #   Docker entrypoint with signal handling
 │   └── supervisord.conf          #   Supervisord process config
 ├── docs/                         # Additional documentation
 ├── .github/workflows/            # CI/CD pipelines
-│   ├── deploy-frontend.yml       #   GitHub Pages deployment
-│   └── docker-publish.yml        #   Docker Hub publish
+│   ├── security.yml              #   ASH scanning
+│   ├── docker-publish.yml        #   Docker Hub
+│   └── deploy-frontend.yml       #   GitHub Pages
 ├── Dockerfile                    # Multi-stage production build
 ├── docker-compose.yml            # Local Docker Compose
+├── .dockerignore                 # Docker build context exclusions
 ├── Makefile                      # Build automation
 ├── go.mod                        # Go module definition (pinned versions)
 ├── go.sum                        # Go dependency checksums
-├── vendor/                       # Vendored Go dependencies (offline-ready)
-│   └── modules.txt
 ├── .env.example                  # Environment template
 ├── web/.env.example              # Frontend environment template
 ├── README.md                     # This file
@@ -413,15 +420,15 @@ cd polyorch
 docker compose up -d
 
 # 3. Verify it's running
-curl http://localhost:8080/health
+curl http://localhost:8082/health
 # Expected: {"status":"ok"}
 ```
 
 **Access points:**
-- 🌐 **Web UI Dashboard:** `http://localhost:8080`
+- 🌐 **Web UI Dashboard:** `http://localhost:8082`
 - 🌍 **Live Demo (GitHub Pages):** https://nimish-nirmal.github.io/polyorch/
-- 📖 **Swagger API Docs:** `http://localhost:8080/swagger/index.html`
-- 💚 **Health Check:** `http://localhost:8080/health`
+- 📖 **Swagger API Docs:** `http://localhost:8082/swagger/index.html`
+- 💚 **Health Check:** `http://localhost:8082/health`
 - 📡 **NATS Monitoring:** `nats://localhost:4222` (use `nats-server -js` separately if needed)
 
 **Stop the stack:**
@@ -458,18 +465,18 @@ make run
 ```bash
 # Terminal 1: API server
 make build-api
-PORT=8080 DB_PATH=/tmp/polyorch.db NATS_URL=nats://127.0.0.1:4222 ./bin/polyorch-api
+POLYORCH_PORT=8082 POLYORCH_DB_PATH=/tmp/polyorch.db POLYORCH_NATS_URL=nats://127.0.0.1:4222 ./bin/polyorch-api
 
 # Terminal 2: Worker
 make build-worker
-DB_PATH=/tmp/polyorch.db NATS_URL=nats://127.0.0.1:4222 RUNS_TMP_DIR=/tmp/runs ./bin/polyorch-worker
+POLYORCH_DB_PATH=/tmp/polyorch.db POLYORCH_NATS_URL=nats://127.0.0.1:4222 POLYORCH_RUNS_TMP_DIR=/tmp/runs ./bin/polyorch-worker
 ```
 
 **Frontend development mode:**
 ```bash
 cd web
 npm run dev
-# Vite dev server at http://localhost:5173 (proxied to :8080)
+# Vite dev server at http://localhost:5173 (proxied to :8082)
 ```
 
 ### Option 3: Build Docker Image Locally
@@ -483,7 +490,7 @@ make docker-build
 # Run it
 docker run -d \
   --name polyorch \
-  -p 8080:8080 \
+  -p 8082:8082 \
   -p 4222:4222 \
   -v polyorch_data:/data \
   polyorch/all-in-one:latest
@@ -500,7 +507,7 @@ docker logs -f polyorch
 
 ### What to Expect
 
-When you open `http://localhost:8080`, you'll see the **PolyOrch Dashboard**:
+When you open `http://localhost:8082`, you'll see the **PolyOrch Dashboard**:
 
 1. **Dashboard** — Overview cards showing total projects, active runs, success rate, and queue depth. Recent runs table with status badges.
 2. **Projects** — Create a new project, upload multi-file code bundles (ZIP + manifest), view version history, and activate/rollback versions.
@@ -531,7 +538,7 @@ sample-etl/
 
 | Step | Action | Expected Result |
 | :--- | :--- | :--- |
-| 1 | Open `http://localhost:8080` | Dashboard loads with dark theme |
+| 1 | Open `http://localhost:8082` | Dashboard loads with dark theme |
 | 2 | Navigate to **Projects** → **New Project** | Form with name, description, ZIP upload |
 | 3 | Upload `sample-etl.zip` + `manifest.json` | Project created, version `v1.0.0` active |
 | 4 | Click **Run** on version | Run created, status → `running` |
@@ -609,7 +616,7 @@ make build
 
 **Manual smoke tests:**
 1. Start container: `docker compose up -d`
-2. Health check: `curl http://localhost:8080/health`
+2. Health check: `curl http://localhost:8082/health`
 3. Create project via API or UI
 4. Upload version (ZIP + manifest)
 5. Trigger run

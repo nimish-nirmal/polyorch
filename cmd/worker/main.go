@@ -12,9 +12,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	natspkg "github.com/nimish-nirmal/polyorch/internal/nats"
 	"github.com/nimish-nirmal/polyorch/internal/config"
 	"github.com/nimish-nirmal/polyorch/internal/database"
+	natspkg "github.com/nimish-nirmal/polyorch/internal/nats"
 	"github.com/nimish-nirmal/polyorch/internal/worker"
 )
 
@@ -31,30 +31,36 @@ func main() {
 		logger.Fatal().Err(err).Msg("failed to open database")
 	}
 	defer conn.Conn.Close()
+	logger.Info().Str("db_path", cfg.DBPath).Msg("connected to database")
 
 	nc, err := nats.Connect(cfg.NATSURL)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to connect to NATS")
 	}
 	defer nc.Close()
+	logger.Info().Str("nats_url", cfg.NATSURL).Msg("connected to NATS")
 
 	js, err := jetstream.New(nc)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to create JetStream context")
 	}
+	logger.Info().Msg("JetStream context created")
 
 	if err := natspkg.EnsureStream(context.Background(), js, &logger); err != nil {
 		logger.Fatal().Err(err).Msg("failed to ensure stream")
 	}
+	logger.Info().Msg("NATS stream ensured")
 
 	if err := os.MkdirAll(cfg.RunsTmpDir, 0755); err != nil {
 		logger.Fatal().Err(err).Msg("failed to create runs tmp dir")
 	}
+	logger.Info().Str("runs_tmp_dir", cfg.RunsTmpDir).Msg("runs tmp dir ready")
 
 	store := database.NewSQLiteStore(conn.Conn)
 	timeout := 300 * time.Second
 
 	engine := worker.NewEngine(store, js, nc, cfg.RunsTmpDir, timeout, &logger)
+	logger.Info().Msg("worker engine initialized")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -68,6 +74,7 @@ func main() {
 		cancel()
 	}()
 
+	logger.Info().Msg("starting worker consumer")
 	if err := engine.Consume(ctx); err != nil {
 		logger.Fatal().Err(err).Msg("worker consume error")
 	}

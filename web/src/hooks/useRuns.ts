@@ -6,6 +6,7 @@ export interface Run {
   project_id: string
   project_name?: string
   version: string
+  version_id: string
   status: 'pending' | 'running' | 'success' | 'failed' | 'cancelled'
   started_at?: string
   finished_at?: string
@@ -34,7 +35,13 @@ export function useRuns() {
     setError(null)
     try {
       const response = await api.get(endpoints.runs)
-      setRuns(response.data)
+      const mapped = (response.data.data || []).map((item: any) => ({
+        ...item,
+        id: item.run_id,
+        version: item.version_tag || item.version_id,
+        version_id: item.version_id,
+      }))
+      setRuns(mapped)
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to fetch runs')
     } finally {
@@ -47,7 +54,16 @@ export function useRuns() {
     setError(null)
     try {
       const response = await api.get(`${endpoints.runs}/${id}`)
-      return response.data
+      const item = response.data.data || null
+      if (item) {
+        return {
+          ...item,
+          id: item.run_id,
+          version: item.version_tag || item.version_id,
+          version_id: item.version_id,
+        }
+      }
+      return null
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to fetch run details')
       return null
@@ -59,10 +75,21 @@ export function useRuns() {
   const fetchRunLogs = useCallback(async (id: string): Promise<string[]> => {
     try {
       const response = await api.get(endpoints.runLogs(id))
-      return response.data.logs || []
+      return response.data.data || []
     } catch (err: any) {
       console.error('Failed to fetch run logs:', err)
       return []
+    }
+  }, [])
+
+  const deleteRun = useCallback(async (id: string) => {
+    setError(null)
+    try {
+      await api.delete(`${endpoints.runs}/${id}`)
+      setRuns((prev) => prev.filter((run) => run.id !== id))
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to delete run')
+      throw err
     }
   }, [])
 
@@ -77,5 +104,6 @@ export function useRuns() {
     fetchRuns,
     fetchRunDetail,
     fetchRunLogs,
+    deleteRun,
   }
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -15,11 +16,11 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
-	natspkg "github.com/nimish-nirmal/polyorch/internal/nats"
 	"github.com/nimish-nirmal/polyorch/internal/config"
 	"github.com/nimish-nirmal/polyorch/internal/database"
 	"github.com/nimish-nirmal/polyorch/internal/handlers"
 	"github.com/nimish-nirmal/polyorch/internal/middleware"
+	natspkg "github.com/nimish-nirmal/polyorch/internal/nats"
 	"github.com/nimish-nirmal/polyorch/internal/websocket"
 )
 
@@ -63,7 +64,7 @@ func main() {
 	go hub.Run()
 
 	store := database.NewSQLiteStore(conn.Conn)
-	server := handlers.NewServer(store)
+	server := handlers.NewServer(store, js)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -92,25 +93,50 @@ func main() {
 		protected.POST("/projects/:id/versions", server.CreateVersion)
 		protected.GET("/projects/:id/versions", server.ListVersions)
 		protected.POST("/projects/:id/versions/:versionId/activate", server.SetActiveVersion)
+		protected.GET("/projects/:id/versions/:versionId/files", server.ListVersionFiles)
+		protected.GET("/projects/:id/versions/:versionId/files/*filename", server.GetVersionFile)
+		protected.PUT("/projects/:id/versions/:versionId/files/*filename", server.UpdateVersionFile)
 
 		protected.POST("/runs", server.CreateRun)
 		protected.GET("/runs", server.ListRuns)
 		protected.GET("/runs/:id", server.GetRun)
 		protected.GET("/runs/:id/logs", server.GetRunLogs)
-
-		protected.GET("/ws/logs/:run_id", func(c *gin.Context) {
-			websocket.NewHandler(hub, cfg.NATSURL).ServeHTTP(c)
-		})
+		protected.POST("/runs/:id/start", server.StartRun)
+		protected.DELETE("/runs/:id/logs", server.ClearRunLogs)
+		protected.DELETE("/runs/:id", server.DeleteRun)
 	}
 
 	router.GET("/health", handlers.Health)
+
+	router.GET("/api/v1/ws/logs/:run_id", func(c *gin.Context) {
+		websocket.NewHandler(hub, cfg.NATSURL).ServeHTTP(c)
+	})
 
 	if viper.GetBool("swagger_enabled") {
 		handlers.SetupSwagger(router.Group(""))
 	}
 
 	if cfg.WebDir != "" {
+		// The frontend is built with vite `base: /polyorch/` and mounts its
+		// router at that basename. Serving the SPA shell at "/" would leave the
+		// router with no matching route (a blank page), so redirect the bare
+		// root to the canonical mount point instead.
+		redirectRoot := func(c *gin.Context) {
+			c.Redirect(http.StatusMovedPermanently, "/polyorch/")
+		}
+		router.GET("/", redirectRoot)
+		router.HEAD("/", redirectRoot)
+
+		router.StaticFS("/polyorch", http.Dir(cfg.WebDir))
+
 		router.NoRoute(func(c *gin.Context) {
+			// Unknown API endpoints must return JSON, not the SPA shell.
+			if strings.HasPrefix(c.Request.URL.Path, "/api/") {
+				c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+				return
+			}
+			// SPA fallback: serve the shell for client-side routes such as
+			// /polyorch/login so deep links and refreshes work.
 			c.File(cfg.WebDir + "/index.html")
 		})
 	}

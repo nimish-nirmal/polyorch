@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import Sidebar from './components/Sidebar'
@@ -7,6 +8,8 @@ import ProjectDetail from './pages/ProjectDetail'
 import Runs from './pages/Runs'
 import RunDetail from './pages/RunDetail'
 import Login from './pages/Login'
+
+const routerBase = import.meta.env.BASE_URL.replace(/\/$/, '')
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -44,14 +47,7 @@ function AppRoutes() {
         path="/"
         element={
           <ProtectedRoute>
-            <div className="flex h-screen bg-dark-950 text-dark-100">
-              <Sidebar />
-              <main className="flex-1 overflow-auto ml-64">
-                <div className="p-6">
-                  <Navigate to="/dashboard" replace />
-                </div>
-              </main>
-            </div>
+            <AppShell><Navigate to="/dashboard" replace /></AppShell>
           </ProtectedRoute>
         }
       />
@@ -59,14 +55,7 @@ function AppRoutes() {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <div className="flex h-screen bg-dark-950 text-dark-100">
-              <Sidebar />
-              <main className="flex-1 overflow-auto ml-64">
-                <div className="p-6">
-                  <Dashboard />
-                </div>
-              </main>
-            </div>
+            <AppShell><Dashboard /></AppShell>
           </ProtectedRoute>
         }
       />
@@ -74,14 +63,7 @@ function AppRoutes() {
         path="/projects"
         element={
           <ProtectedRoute>
-            <div className="flex h-screen bg-dark-950 text-dark-100">
-              <Sidebar />
-              <main className="flex-1 overflow-auto ml-64">
-                <div className="p-6">
-                  <Projects />
-                </div>
-              </main>
-            </div>
+            <AppShell><Projects /></AppShell>
           </ProtectedRoute>
         }
       />
@@ -89,14 +71,7 @@ function AppRoutes() {
         path="/projects/:id"
         element={
           <ProtectedRoute>
-            <div className="flex h-screen bg-dark-950 text-dark-100">
-              <Sidebar />
-              <main className="flex-1 overflow-auto ml-64">
-                <div className="p-6">
-                  <ProjectDetail />
-                </div>
-              </main>
-            </div>
+            <AppShell><ProjectDetail /></AppShell>
           </ProtectedRoute>
         }
       />
@@ -104,14 +79,7 @@ function AppRoutes() {
         path="/runs"
         element={
           <ProtectedRoute>
-            <div className="flex h-screen bg-dark-950 text-dark-100">
-              <Sidebar />
-              <main className="flex-1 overflow-auto ml-64">
-                <div className="p-6">
-                  <Runs />
-                </div>
-              </main>
-            </div>
+            <AppShell><Runs /></AppShell>
           </ProtectedRoute>
         }
       />
@@ -119,14 +87,7 @@ function AppRoutes() {
         path="/runs/:id"
         element={
           <ProtectedRoute>
-            <div className="flex h-screen bg-dark-950 text-dark-100">
-              <Sidebar />
-              <main className="flex-1 overflow-auto ml-64">
-                <div className="p-6">
-                  <RunDetail />
-                </div>
-              </main>
-            </div>
+            <AppShell><RunDetail /></AppShell>
           </ProtectedRoute>
         }
       />
@@ -134,9 +95,33 @@ function AppRoutes() {
   )
 }
 
+function AppShell({ children }: { children: React.ReactNode }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  return (
+    <div className="min-h-screen bg-dark-950 text-dark-100">
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {sidebarOpen && (
+        <button aria-label="Close navigation" onClick={() => setSidebarOpen(false)} className="fixed inset-0 z-40 bg-black/60 md:hidden" />
+      )}
+      <main className="min-h-screen overflow-x-hidden md:ml-64 flex flex-col">
+        <div className="flex items-center border-b border-dark-800 bg-dark-950/95 px-4 py-3 backdrop-blur md:hidden">
+          <button aria-label="Open navigation" onClick={() => setSidebarOpen(true)} className="rounded-lg p-2 text-dark-300 hover:bg-dark-800 hover:text-white">
+            <span className="block h-0.5 w-5 bg-current" />
+            <span className="mt-1 block h-0.5 w-5 bg-current" />
+            <span className="mt-1 block h-0.5 w-5 bg-current" />
+          </button>
+          <span className="ml-3 text-sm font-semibold text-white">PolyOrch</span>
+        </div>
+        <div className="mx-auto w-full max-w-[1500px] p-4 sm:p-6 lg:p-8 flex-1 flex flex-col">{children}</div>
+      </main>
+    </div>
+  )
+}
+
 function App() {
   return (
-    <Router>
+    <Router basename={routerBase}>
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>

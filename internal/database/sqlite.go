@@ -1,7 +1,11 @@
 package database
 
 import (
+	"archive/zip"
+	"bytes"
 	"database/sql"
+	"fmt"
+	"io"
 	"time"
 
 	"github.com/nimish-nirmal/polyorch/internal/models"
@@ -23,11 +27,18 @@ func (s *SQLiteStore) CreateProject(projectID, name, description string) (*model
 	if err != nil {
 		return nil, err
 	}
-	return &models.Project{ProjectID: projectID, Name: name, Description: &description}, nil
+	// Re-read the row so created_at reflects the database-assigned value.
+	return s.GetProject(projectID)
 }
 
 func (s *SQLiteStore) ListProjects() ([]models.Project, error) {
-	rows, err := s.Conn.Query("SELECT project_id, name, description, created_at FROM projects ORDER BY created_at DESC")
+	rows, err := s.Conn.Query(`
+		SELECT p.project_id, p.name, p.description, p.created_at, COUNT(pv.version_id) as versions_count
+		FROM projects p
+		LEFT JOIN project_versions pv ON p.project_id = pv.project_id
+		GROUP BY p.project_id, p.name, p.description, p.created_at
+		ORDER BY p.created_at DESC
+	`)
 	if err != nil {
 		return nil, err
 	}
@@ -36,9 +47,11 @@ func (s *SQLiteStore) ListProjects() ([]models.Project, error) {
 	var projects []models.Project
 	for rows.Next() {
 		var p models.Project
-		if err := rows.Scan(&p.ProjectID, &p.Name, &p.Description, &p.CreatedAt); err != nil {
+		var versionsCount int
+		if err := rows.Scan(&p.ProjectID, &p.Name, &p.Description, &p.CreatedAt, &versionsCount); err != nil {
 			return nil, err
 		}
+		p.VersionsCount = versionsCount
 		projects = append(projects, p)
 	}
 	return projects, nil
@@ -105,6 +118,160 @@ func (s *SQLiteStore) GetVersion(versionID string) (*models.ProjectVersion, erro
 	return &v, nil
 }
 
+func (s *SQLiteStore) GetVersionFiles(projectID, versionID string) ([]string, error) {
+	var v models.ProjectVersion
+	err := s.Conn.QueryRow(
+		"SELECT files_bundle FROM project_versions WHERE project_id = ? AND version_id = ?",
+		projectID, versionID,
+	).Scan(&v.FilesBundle)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	zipReader, err := zip.NewReader(bytes.NewReader(v.FilesBundle), int64(len(v.FilesBundle)))
+	if err != nil {
+		return nil, err
+	}
+
+	var files []string
+	for _, f := range zipReader.File {
+		if !f.FileInfo().IsDir() {
+			files = append(files, f.Name)
+		}
+	}
+	return files, nil
+}
+
+func (s *SQLiteStore) GetVersionFile(projectID, versionID, filename string) (string, error) {
+	var v models.ProjectVersion
+	err := s.Conn.QueryRow(
+		"SELECT files_bundle FROM project_versions WHERE project_id = ? AND version_id = ?",
+		projectID, versionID,
+	).Scan(&v.FilesBundle)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+
+	zipReader, err := zip.NewReader(bytes.NewReader(v.FilesBundle), int64(len(v.FilesBundle)))
+	if err != nil {
+		return "", err
+	}
+
+	for _, f := range zipReader.File {
+		if f.Name == filename && !f.FileInfo().IsDir() {
+			rc, err := f.Open()
+			if err != nil {
+				return "", err
+			}
+			defer rc.Close()
+
+			var buf bytes.Buffer
+			_, err = buf.ReadFrom(rc)
+			if err != nil {
+				return "", err
+			}
+			return buf.String(), nil
+		}
+	}
+	return "", nil
+}
+
+func (s *SQLiteStore) UpdateVersionFile(versionID, filename, newContent string) (*models.ProjectVersion, error) {
+	var base models.ProjectVersion
+	err := s.Conn.QueryRow(
+		"SELECT manifest_json, files_bundle FROM project_versions WHERE version_id = ?",
+		versionID,
+	).Scan(&base.ManifestJSON, &base.FilesBundle)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("version not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	zipReader, err := zip.NewReader(bytes.NewReader(base.FilesBundle), int64(len(base.FilesBundle)))
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	zipWriter := zip.NewWriter(&buf)
+
+	updated := false
+	for _, f := range zipReader.File {
+		if !f.FileInfo().IsDir() && f.Name == filename {
+			fw, err := zipWriter.Create(f.Name)
+			if err != nil {
+				return nil, err
+			}
+			_, err = fw.Write([]byte(newContent))
+			if err != nil {
+				return nil, err
+			}
+			updated = true
+			continue
+		}
+
+		if f.FileInfo().IsDir() {
+			_, err := zipWriter.CreateHeader(&zip.FileHeader{
+				Name:     f.Name,
+				Method:   f.Method,
+				Modified: f.Modified,
+			})
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			return nil, err
+		}
+		content, err := io.ReadAll(rc)
+		rc.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		fw, err := zipWriter.Create(f.Name)
+		if err != nil {
+			return nil, err
+		}
+		_, err = fw.Write(content)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if !updated && filename != "" {
+		fw, err := zipWriter.Create(filename)
+		if err != nil {
+			return nil, err
+		}
+		_, err = fw.Write([]byte(newContent))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err := zipWriter.Close(); err != nil {
+		return nil, err
+	}
+
+	if _, err := s.Conn.Exec("UPDATE project_versions SET files_bundle = ? WHERE version_id = ?", buf.Bytes(), versionID); err != nil {
+		return nil, err
+	}
+
+	return s.GetVersion(versionID)
+}
+
 func (s *SQLiteStore) SetActiveVersion(versionID string) error {
 	tx, err := s.Conn.Begin()
 	if err != nil {
@@ -136,33 +303,88 @@ func (s *SQLiteStore) CreateRun(versionID string) (*models.WorkflowRun, error) {
 func (s *SQLiteStore) GetRun(runID string) (*models.WorkflowRun, error) {
 	var r models.WorkflowRun
 	err := s.Conn.QueryRow(
-		"SELECT run_id, version_id, status, started_at, finished_at FROM workflow_runs WHERE run_id = ?",
+		"SELECT wr.run_id, wr.version_id, pv.version_tag, pv.project_id, wr.status, wr.started_at, wr.finished_at FROM workflow_runs wr LEFT JOIN project_versions pv ON wr.version_id = pv.version_id WHERE wr.run_id = ?",
 		runID,
-	).Scan(&r.RunID, &r.VersionID, &r.Status, &r.StartedAt, &r.FinishedAt)
+	).Scan(&r.RunID, &r.VersionID, &r.VersionTag, &r.ProjectID, &r.Status, &r.StartedAt, &r.FinishedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
+	if err := s.hydrateStartedAt(&r); err != nil {
+		return nil, err
+	}
 	return &r, nil
+}
+
+func (s *SQLiteStore) hydrateStartedAt(run *models.WorkflowRun) error {
+	if run.StartedAt != nil {
+		return nil
+	}
+	var firstLog time.Time
+	err := s.Conn.QueryRow(
+		"SELECT timestamp FROM execution_logs WHERE run_id = ? ORDER BY timestamp ASC LIMIT 1",
+		run.RunID,
+	).Scan(&firstLog)
+	if err == nil {
+		run.StartedAt = &firstLog
+		return nil
+	}
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	return err
 }
 
 func (s *SQLiteStore) UpdateRunStatus(runID, status string, finishedAt *time.Time) error {
 	if finishedAt != nil {
-		_, err := s.Conn.Exec(
+		result, err := s.Conn.Exec(
 			"UPDATE workflow_runs SET status = ?, finished_at = ? WHERE run_id = ?",
 			status, finishedAt, runID,
 		)
+		if err != nil {
+			return err
+		}
+		return requireRunUpdate(result)
+	}
+	result, err := s.Conn.Exec("UPDATE workflow_runs SET status = ?, started_at = COALESCE(started_at, CASE WHEN ? = 'running' THEN CURRENT_TIMESTAMP ELSE started_at END) WHERE run_id = ?", status, status, runID)
+	if err != nil {
 		return err
 	}
-	_, err := s.Conn.Exec("UPDATE workflow_runs SET status = ? WHERE run_id = ?", status, runID)
-	return err
+	return requireRunUpdate(result)
+}
+
+func requireRunUpdate(result sql.Result) error {
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (s *SQLiteStore) DeleteRun(runID string) error {
+	tx, err := s.Conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec("DELETE FROM execution_logs WHERE run_id = ?", runID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec("DELETE FROM workflow_runs WHERE run_id = ?", runID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (s *SQLiteStore) ListRuns(limit, offset int) ([]models.WorkflowRun, error) {
 	rows, err := s.Conn.Query(
-		"SELECT run_id, version_id, status, started_at, finished_at FROM workflow_runs ORDER BY started_at DESC LIMIT ? OFFSET ?",
+		"SELECT wr.run_id, wr.version_id, pv.version_tag, pv.project_id, wr.status, wr.started_at, wr.finished_at FROM workflow_runs wr LEFT JOIN project_versions pv ON wr.version_id = pv.version_id ORDER BY wr.started_at DESC LIMIT ? OFFSET ?",
 		limit, offset,
 	)
 	if err != nil {
@@ -173,7 +395,10 @@ func (s *SQLiteStore) ListRuns(limit, offset int) ([]models.WorkflowRun, error) 
 	var runs []models.WorkflowRun
 	for rows.Next() {
 		var r models.WorkflowRun
-		if err := rows.Scan(&r.RunID, &r.VersionID, &r.Status, &r.StartedAt, &r.FinishedAt); err != nil {
+		if err := rows.Scan(&r.RunID, &r.VersionID, &r.VersionTag, &r.ProjectID, &r.Status, &r.StartedAt, &r.FinishedAt); err != nil {
+			return nil, err
+		}
+		if err := s.hydrateStartedAt(&r); err != nil {
 			return nil, err
 		}
 		runs = append(runs, r)
@@ -207,6 +432,11 @@ func (s *SQLiteStore) InsertLog(runID, streamType, message string) error {
 		"INSERT INTO execution_logs (run_id, stream_type, message) VALUES (?, ?, ?)",
 		runID, streamType, message,
 	)
+	return err
+}
+
+func (s *SQLiteStore) ClearLogs(runID string) error {
+	_, err := s.Conn.Exec("DELETE FROM execution_logs WHERE run_id = ?", runID)
 	return err
 }
 

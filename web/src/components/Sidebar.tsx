@@ -9,7 +9,12 @@ const navItems = [
   { to: '/runs', label: 'Runs', icon: RunsIcon },
 ]
 
-export default function Sidebar() {
+interface SidebarProps {
+  open?: boolean
+  onClose?: () => void
+}
+
+export default function Sidebar({ open = false, onClose }: SidebarProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [showChangePassword, setShowChangePassword] = useState(false)
@@ -20,17 +25,17 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-dark-900 border-r border-dark-700 z-50 flex flex-col">
-      <div className="p-4 border-b border-dark-700">
+    <aside className={`fixed left-0 top-0 h-screen w-64 bg-dark-900/95 border-r border-dark-700 z-50 flex flex-col transition-transform duration-200 backdrop-blur md:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className="p-5 border-b border-dark-700">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+          <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-950/50">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
             </svg>
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white">PolyOrch</h1>
-            <p className="text-xs text-dark-400">Polyglot DAG Orchestrator</p>
+            <h1 className="text-lg font-bold tracking-tight text-white">PolyOrch</h1>
+            <p className="text-[11px] uppercase tracking-[0.12em] text-dark-500">Workflow control plane</p>
           </div>
         </div>
       </div>
@@ -43,10 +48,11 @@ export default function Sidebar() {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-blue-600/10 text-blue-400'
+                  ? 'bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-400/20'
                   : 'text-dark-300 hover:bg-dark-800 hover:text-white'
               }`
             }
+            onClick={onClose}
           >
             <item.icon className="w-5 h-5" />
             {item.label}

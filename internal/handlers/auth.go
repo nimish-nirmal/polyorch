@@ -153,7 +153,7 @@ func (s *Server) Me(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"username":  user.Username,
+		"username":   user.Username,
 		"must_reset": user.MustReset,
 	})
 }
