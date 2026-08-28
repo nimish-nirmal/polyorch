@@ -264,7 +264,7 @@ PolyOrch should remain API-first, single-container friendly, and understandable 
 | **Log Streaming Latency** | < 100 ms | Timestamp diff between worker write and browser render |
 | **API Response Time (p95)** | < 200 ms | Load test with 100 concurrent requests |
 | **Worker Task Throughput** | 10+ tasks/sec | Benchmark with synthetic workloads |
-| **Docker Image Size** | < 200 MB | `docker images polyorch/all-in-one` |
+| **Docker Image Size** | < 200 MB | `docker images devilhunter21/polyorch` |
 | **Uptime (with Supervisord)** | 99.9%+ | Process crash → auto-restart in < 1 second |
 | **Task State Freshness** | < 2 seconds | UI reflects worker task state while a run is active |
 | **Version Run Accuracy** | 100% | Run executes the exact selected immutable version |

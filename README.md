@@ -153,8 +153,8 @@ Push changes to `web/` on `main` branch to auto-deploy frontend:
 ### Docker Hub (Automatic)
 Push to `main` or tag `v*` to build and push:
 ```bash
-docker pull polyorch/all-in-one:latest
-docker run -d -p 8082:8082 -p 4222:4222 -v polyorch_data:/data polyorch/all-in-one:latest
+docker pull devilhunter21/polyorch:latest
+docker run -d -p 8082:8082 -p 4222:4222 -v polyorch_data:/data devilhunter21/polyorch:latest
 ```
 
 ### Local Docker
@@ -291,7 +291,7 @@ Everything runs isolated inside one Docker container managed by Supervisord:
 
 ```mermaid
 flowchart TD
-    subgraph Container ["Single Docker Container: polyorch/all-in-one"]
+    subgraph Container ["Single Docker Container: devilhunter21/polyorch"]
         UI["ReactJS Frontend Assets<br/>(Embedded / Served on :8082)"] <-->|HTTP / WebSockets| API["Go Core API Server<br/>(Gin Framework)"]
         
         API <--> DB[("SQLite Database<br/>/data/polyorch.db (WAL Mode)")]
@@ -493,7 +493,7 @@ docker run -d \
   -p 8082:8082 \
   -p 4222:4222 \
   -v polyorch_data:/data \
-  polyorch/all-in-one:latest
+  devilhunter21/polyorch:latest
 
 # Check logs
 docker logs -f polyorch
@@ -649,7 +649,7 @@ Distributed under the **MIT License**. See `LICENSE` for more information.
 ## 🔗 Related Links
 
 - **GitHub Repository:** https://github.com/nimish-nirmal/polyorch
-- **Docker Hub Image:** `polyorch/all-in-one:latest` (auto-published on main branch push)
+- **Docker Hub Image:** `devilhunter21/polyorch:latest` (auto-published on main branch push)
 - **Issues & Bugs:** https://github.com/nimish-nirmal/polyorch/issues
 - **Releases:** https://github.com/nimish-nirmal/polyorch/releases
 

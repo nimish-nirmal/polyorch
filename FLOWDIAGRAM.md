@@ -6,7 +6,7 @@ The diagram below illustrates component interactions inside the single Docker co
 
 ```mermaid
 flowchart TD
-    subgraph Container ["Single Docker Container: polyorch/all-in-one"]
+    subgraph Container ["Single Docker Container: devilhunter21/polyorch"]
         UI["ReactJS Frontend Assets<br/>(Embedded / Served on :8080)"] <-->|HTTP / WebSockets| API["Go Core API Server<br/>(Gin / Fiber Framework)"]
         
         API <--> DB[("SQLite Database<br/>/data/polyorch.db (WAL Mode)")]

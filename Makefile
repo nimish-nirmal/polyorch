@@ -1,7 +1,7 @@
 GO := go
 NPM := npm
 DOCKER := docker
-IMAGE := polyorch/all-in-one
+IMAGE := devilhunter21/polyorch
 TAG := latest
 
 .PHONY: help deps build-api build-worker build-frontend build run docker-build docker-run docker-stop clean test lint fmt

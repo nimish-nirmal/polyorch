@@ -392,5 +392,5 @@ A successful demo should show:
 ## 🔗 Demo Resources
 
 - **Live Demo (GitHub Pages):** https://nimish-nirmal.github.io/polyorch/ *(requires backend running)*
-- **Docker Image:** `polyorch/all-in-one:latest`
+- **Docker Image:** `devilhunter21/polyorch:latest`
 - **Sample Projects:** See `docs/sample-project/` in this repository

@@ -159,13 +159,13 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          tags: polyorch/all-in-one:security-scan
+          tags: devilhunter21/polyorch:security-scan
           load: true
 
       - name: Run Trivy image scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'polyorch/all-in-one:security-scan'
+          image-ref: 'devilhunter21/polyorch:security-scan'
           format: 'sarif'
           output: 'trivy-image-results.sarif'
           severity: 'CRITICAL,HIGH'

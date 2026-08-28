@@ -130,7 +130,7 @@ docker compose down -v
 
 ```bash
 # Build the all-in-one image
-docker build -t polyorch/all-in-one:latest .
+docker build -t devilhunter21/polyorch:latest .
 
 # Run it
 docker run -d \
@@ -140,7 +140,7 @@ docker run -d \
   -v polyorch_data:/data \
   -e POLYORCH_API_KEY=changeme \
   -e POLYORCH_LOG_LEVEL=info \
-  polyorch/all-in-one:latest
+  devilhunter21/polyorch:latest
 
 # Check logs
 docker logs -f polyorch
@@ -233,7 +233,7 @@ base: '/polyorch/'
 ```bash
 POLYORCH_PORT=8081 make run
 # Or with Docker:
-docker run -p 8081:8081 -e POLYORCH_PORT=8081 polyorch/all-in-one:latest
+docker run -p 8081:8081 -e POLYORCH_PORT=8081 devilhunter21/polyorch:latest
 ```
 
 ### Issue: NATS connection refused

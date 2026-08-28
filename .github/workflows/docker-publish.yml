@@ -30,7 +30,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: polyorch/all-in-one
+          images: devilhunter21/polyorch
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix={{branch}}-
@@ -43,12 +43,12 @@ jobs:
           context: .
           push: true
           tags: |
-            polyorch/all-in-one:latest
-            polyorch/all-in-one:${{ github.sha }}
+            devilhunter21/polyorch:latest
+            devilhunter21/polyorch:${{ github.sha }}
             ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=polyorch/all-in-one:buildcache
-          cache-to: type=registry,ref=polyorch/all-in-one:buildcache,mode=max,ignore-error=true
+          cache-from: type=registry,ref=devilhunter21/polyorch:buildcache
+          cache-to: type=registry,ref=devilhunter21/polyorch:buildcache,mode=max,ignore-error=true
 
       - name: Build only (no push)
         if: github.event_name != 'push' || github.ref != 'refs/heads/main'
@@ -56,6 +56,6 @@ jobs:
         with:
           context: .
           push: false
-          tags: polyorch/all-in-one:buildcache
+          tags: devilhunter21/polyorch:buildcache
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache,mode=max

@@ -143,7 +143,7 @@
   - *Added SEO keywords and structured formatting*
   - *Created `QUICKSTART.md` and `DEMO.md`*
 
-* [x] **Tag & Release:** Build and push `polyorch/all-in-one:latest` image to Docker Hub.
+* [x] **Tag & Release:** Build and push `devilhunter21/polyorch:latest` image to Docker Hub.
   - *GitHub Actions workflow `.github/workflows/docker-publish.yml` configured*
   - *Triggers on push to `main` and tags `v*`*
   - *Docker Hub secrets: `DOCKER_USERNAME`, `DOCKER_PASSWORD`*
