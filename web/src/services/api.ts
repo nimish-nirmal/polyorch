@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8082'
-const wsBase = import.meta.env.VITE_WS_URL || 'ws://localhost:8082'
+const apiBase = import.meta.env.VITE_API_URL || ''
+const wsBase = import.meta.env.VITE_WS_URL || ''
 
 export const api = axios.create({
   baseURL: `${apiBase}/api/v1`,

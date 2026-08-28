@@ -15,7 +15,7 @@ export default function Terminal({ runId }: TerminalProps) {
   const terminalRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const wsBaseUrl = typeof window !== 'undefined'
-    ? `${wsBase}/api/v1/ws/logs/${runId}`
+    ? `${wsBase || (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host}/api/v1/ws/logs/${runId}`
     : null
 
   const handleMessage = useCallback((data: string) => {
