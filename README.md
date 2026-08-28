@@ -150,6 +150,15 @@ polyorch/
 Push changes to `web/` on `main` branch to auto-deploy frontend:
 - **Live Demo:** https://nimish-nirmal.github.io/polyorch/
 
+To connect the GitHub Pages frontend to a remote backend, add two
+repository secrets (Settings → Secrets → Actions):
+- `APP_API_URL` — e.g. `https://polyorch.example.com`
+- `APP_WS_URL` — e.g. `wss://polyorch.example.com`
+
+The CI workflow generates `web/public/config.js` at build time.
+Without these secrets, the frontend uses same-origin paths (works
+with Docker deployment, not GitHub Pages).
+
 ### Docker Hub (Automatic)
 Push to `main` or tag `v*` to build and push:
 ```bash

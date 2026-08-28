@@ -187,10 +187,10 @@ The `.github/workflows/deploy-frontend.yml` workflow triggers when files in `web
 3. Push a commit that changes files in `web/`
 4. The workflow builds and deploys to `https://nimish-nirmal.github.io/polyorch/`
 
-**Vite base path is configured** in `web/vite.config.ts`:
-```typescript
-base: '/polyorch/'
-```
+**To connect to a remote backend:**
+1. Add repository secrets `APP_API_URL` and `APP_WS_URL` (Settings → Secrets → Actions)
+2. Push to `main` — the workflow generates `web/public/config.js` with your backend URL
+3. Without secrets, the frontend uses same-origin paths (Docker only)
 
 ---
 

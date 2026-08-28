@@ -1,7 +1,8 @@
 import axios from 'axios'
 
-const apiBase = import.meta.env.VITE_API_URL || ''
-const wsBase = import.meta.env.VITE_WS_URL || ''
+const runtimeConfig = (typeof window !== 'undefined' && (window as any).POLYORCH_CONFIG) || {}
+const apiBase = runtimeConfig.apiUrl || import.meta.env.VITE_API_URL || ''
+const wsBase = runtimeConfig.wsUrl || import.meta.env.VITE_WS_URL || ''
 
 export const api = axios.create({
   baseURL: `${apiBase}/api/v1`,

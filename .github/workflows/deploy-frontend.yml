@@ -36,6 +36,19 @@ jobs:
       - name: Install dependencies
         run: cd web && npm ci
 
+      - name: Configure runtime API URL
+        if: env.APP_API_URL != ''
+        env:
+          APP_API_URL: ${{ secrets.APP_API_URL }}
+          APP_WS_URL: ${{ secrets.APP_WS_URL }}
+        run: |
+          cat > web/public/config.js << EOF
+          window.POLYORCH_CONFIG = {
+            apiUrl: '${env.APP_API_URL}',
+            wsUrl: '${env.APP_WS_URL}'
+          };
+          EOF
+
       - name: Build
         run: cd web && npm run build
 
