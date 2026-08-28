@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react'
-import { api } from '../services/api'
+import { api, isDemo } from '../services/api'
 
 interface User {
   username: string
@@ -24,6 +24,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (isDemo) {
+      const mockToken = 'demo-token'
+      localStorage.setItem('polyorch_token', mockToken)
+      setToken(mockToken)
+      setUser({ username: 'admin', must_reset: false })
+      setLoading(false)
+      return
+    }
     if (token) {
       api.get('/auth/me')
         .then(res => {
@@ -40,6 +48,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [token])
 
   const login = async (username: string, password: string) => {
+    if (isDemo) {
+      const mockToken = 'demo-token'
+      localStorage.setItem('polyorch_token', mockToken)
+      setToken(mockToken)
+      setUser({ username, must_reset: false })
+      return
+    }
     const res = await api.post('/auth/login', { username, password })
     const { token: newToken, must_reset } = res.data
     localStorage.setItem('polyorch_token', newToken)

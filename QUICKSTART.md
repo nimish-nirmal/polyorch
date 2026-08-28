@@ -190,7 +190,7 @@ The `.github/workflows/deploy-frontend.yml` workflow triggers when files in `web
 **To connect to a remote backend:**
 1. Add repository secrets `APP_API_URL` and `APP_WS_URL` (Settings → Secrets → Actions)
 2. Push to `main` — the workflow generates `web/public/config.js` with your backend URL
-3. Without secrets, the frontend uses same-origin paths (Docker only)
+3. Without secrets on a static host (github.io/netlify.app/vercel.app), the frontend auto-enables **demo mode** with mock data — no backend required
 
 ---
 

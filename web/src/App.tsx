@@ -8,6 +8,7 @@ import ProjectDetail from './pages/ProjectDetail'
 import Runs from './pages/Runs'
 import RunDetail from './pages/RunDetail'
 import Login from './pages/Login'
+import { isDemo } from './services/api'
 
 const routerBase = import.meta.env.BASE_URL.replace(/\/$/, '')
 
@@ -105,16 +106,24 @@ function AppShell({ children }: { children: React.ReactNode }) {
         <button aria-label="Close navigation" onClick={() => setSidebarOpen(false)} className="fixed inset-0 z-40 bg-black/60 md:hidden" />
       )}
       <main className="min-h-screen overflow-x-hidden md:ml-64 flex flex-col">
-        <div className="flex items-center border-b border-dark-800 bg-dark-950/95 px-4 py-3 backdrop-blur md:hidden">
-          <button aria-label="Open navigation" onClick={() => setSidebarOpen(true)} className="rounded-lg p-2 text-dark-300 hover:bg-dark-800 hover:text-white">
-            <span className="block h-0.5 w-5 bg-current" />
-            <span className="mt-1 block h-0.5 w-5 bg-current" />
-            <span className="mt-1 block h-0.5 w-5 bg-current" />
-          </button>
-          <span className="ml-3 text-sm font-semibold text-white">PolyOrch</span>
-        </div>
-        <div className="mx-auto w-full max-w-[1500px] p-4 sm:p-6 lg:p-8 flex-1 flex flex-col">{children}</div>
-      </main>
+          {isDemo && (
+            <div className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-b border-amber-500/30 px-4 py-2">
+              <span className="text-xs font-medium text-amber-300">Demo Mode</span>
+              <span className="text-xs text-amber-400/80 ml-2">Running with mock data — no backend connected</span>
+            </div>
+          )}
+          {!isDemo && (
+            <div className="flex items-center border-b border-dark-800 bg-dark-950/95 px-4 py-3 backdrop-blur md:hidden">
+              <button aria-label="Open navigation" onClick={() => setSidebarOpen(true)} className="rounded-lg p-2 text-dark-300 hover:bg-dark-800 hover:text-white">
+                <span className="block h-0.5 w-5 bg-current" />
+                <span className="mt-1 block h-0.5 w-5 bg-current" />
+                <span className="mt-1 block h-0.5 w-5 bg-current" />
+              </button>
+              <span className="ml-3 text-sm font-semibold text-white">PolyOrch</span>
+            </div>
+          )}
+          <div className="mx-auto w-full max-w-[1500px] p-4 sm:p-6 lg:p-8 flex-1 flex-col">{children}</div>
+        </main>
     </div>
   )
 }

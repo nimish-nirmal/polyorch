@@ -3,7 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useProjects, Version } from '../hooks/useProjects'
 import CodeEditor from '../components/CodeEditor'
 import { formatDate } from '../utils/helpers'
-import { api, endpoints } from '../services/api'
+import { api, endpoints, isDemo } from '../services/api'
+
+const demoFiles = ['main.py', 'config.yaml', 'requirements.txt', 'dags/etl_pipeline.py']
+const demoFileContents: Record<string, string> = {
+  'main.py': "from polyorch import Pipeline\n\npipeline = Pipeline('etl')\npipeline.run()",
+  'config.yaml': "version: 1.0\ntasks:\n  - name: extract\n  - name: transform\n  - name: load\n",
+  'requirements.txt': "pandas>=2.0.0\nrequests>=2.31.0",
+  'dags/etl_pipeline.py': "from polyorch import *\n\n@task\ndef extract(): ...\n\n@task\ndef transform(): ...\n\n@task\ndef load(): ...\n\nDAG(extract >> transform >> load)",
+}
 
 function UploadIcon() {
   return (
@@ -116,8 +124,12 @@ export default function ProjectDetail() {
     setSelectedFile(null)
     setLoadingFiles(true)
     try {
-      const response = await api.get(endpoints.versionFiles(id || '', version.id))
-      setVersionFiles(response.data.data || [])
+      if (isDemo) {
+        setVersionFiles(demoFiles)
+      } else {
+        const response = await api.get(endpoints.versionFiles(id || '', version.id))
+        setVersionFiles(response.data.data || [])
+      }
     } catch (err) {
       setVersionFiles([])
     } finally {
@@ -131,8 +143,12 @@ export default function ProjectDetail() {
       setIsEditing(false)
     }
     try {
-      const response = await api.get(endpoints.versionFile(id, selectedVersion.id, filename))
-      setSelectedFile({ name: filename, content: response.data.data?.content || '' })
+      if (isDemo) {
+        setSelectedFile({ name: filename, content: demoFileContents[filename] || '// File content not available' })
+      } else {
+        const response = await api.get(endpoints.versionFile(id, selectedVersion.id, filename))
+        setSelectedFile({ name: filename, content: response.data.data?.content || '' })
+      }
     } catch (err) {
       setSelectedFile({ name: filename, content: 'Unable to load this file.' })
     }
@@ -168,6 +184,12 @@ export default function ProjectDetail() {
 
   const handleSaveClick = async () => {
     if (!id || !selectedVersion || !selectedFile) return
+    if (isDemo) {
+      setSelectedFile({ name: selectedFile.name, content: editedContent })
+      setIsEditing(false)
+      setEditedContent('')
+      return
+    }
     try {
       await updateVersionFile(id, selectedVersion.id, selectedFile.name, editedContent)
       const response = await api.get(endpoints.versionFile(id, selectedVersion.id, selectedFile.name))

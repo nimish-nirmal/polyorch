@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { api, endpoints } from '../services/api'
+import { api, endpoints, isDemo } from '../services/api'
+
+const mockProjects = [
+  { id: 'proj_1', name: 'ETL Pipeline', description: 'Extract, Transform, Load pipeline', versions_count: 3, last_run_status: 'success', created_at: '2024-01-15T10:30:00Z' },
+  { id: 'proj_2', name: 'Data Sync', description: 'Nightly database synchronization', versions_count: 2, last_run_status: 'running', created_at: '2024-02-20T14:00:00Z' },
+  { id: 'proj_3', name: 'Report Generator', description: 'Weekly analytics reports', versions_count: 1, last_run_status: 'failed', created_at: '2024-03-10T09:15:00Z' },
+]
 
 export interface Project {
   id: string
@@ -73,6 +79,12 @@ export function useProjects() {
   }, [])
 
   const fetchVersions = useCallback(async (projectId: string): Promise<Version[]> => {
+    if (isDemo) {
+      return [
+        { id: 'ver_1', version: 'v1.2.0', description: 'Production-ready ETL pipeline', status: 'active', created_at: '2024-01-20T10:00:00Z' },
+        { id: 'ver_2', version: 'v1.1.0', description: 'Added parallel extraction', status: 'inactive', created_at: '2024-01-15T10:00:00Z' },
+      ]
+    }
     setLoading(true)
     setError(null)
     try {
@@ -140,6 +152,15 @@ export function useProjects() {
   }, [])
 
   const createRun = useCallback(async (projectId: string, versionId: string) => {
+    if (isDemo) {
+      return {
+        run_id: `run_${Date.now()}`,
+        project_id: projectId,
+        version_id: versionId,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      }
+    }
     setLoading(true)
     setError(null)
     try {
@@ -154,6 +175,11 @@ export function useProjects() {
   }, [])
 
   useEffect(() => {
+    if (isDemo) {
+      setProjects(mockProjects)
+      setLoading(false)
+      return
+    }
     fetchProjects()
   }, [fetchProjects])
 

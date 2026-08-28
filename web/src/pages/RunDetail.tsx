@@ -4,7 +4,7 @@ import { useRuns } from '../hooks/useRuns'
 import type { RunDetail } from '../hooks/useRuns'
 import DAGViewer from '../components/DAGViewer'
 import Terminal from '../components/Terminal'
-import { api, endpoints } from '../services/api'
+import { api, endpoints, isDemo } from '../services/api'
 
 function PlayIcon() {
   return (
@@ -87,6 +87,12 @@ export default function RunDetail() {
 
   const handleStart = async () => {
     if (!id || !run) return
+    if (isDemo) {
+      fetchRunDetail(id).then((detail) => {
+        if (detail) setRun(detail)
+      })
+      return
+    }
     try {
       await api.post(`${endpoints.runs}/${id}/start`)
       fetchRunDetail(id).then((detail) => {
@@ -114,8 +120,12 @@ export default function RunDetail() {
     if (filesLoadedVersionRef.current === run.version_id) return
     setLoadingFiles(true)
     try {
-      const files = await api.get(endpoints.versionFiles(run.project_id, run.version_id))
-      setVersionFiles(files.data.data || [])
+      if (isDemo) {
+        setVersionFiles(['main.py', 'config.yaml', 'requirements.txt', 'dags/etl_pipeline.py'])
+      } else {
+        const files = await api.get(endpoints.versionFiles(run.project_id, run.version_id))
+        setVersionFiles(files.data.data || [])
+      }
       filesLoadedVersionRef.current = run.version_id
     } catch (err) {
       console.error('Failed to load version files:', err)
@@ -124,11 +134,22 @@ export default function RunDetail() {
     }
   }, [run?.version_id, run?.project_id])
 
+  const demoFileContents: Record<string, string> = {
+    'main.py': "from polyorch import Pipeline\n\npipeline = Pipeline('etl')\npipeline.run()",
+    'config.yaml': "version: 1.0\ntasks:\n  - name: extract\n  - name: transform\n  - name: load\n",
+    'requirements.txt': "pandas>=2.0.0\nrequests>=2.31.0",
+    'dags/etl_pipeline.py': "from polyorch import *\n\n@task\ndef extract(): ...\n\n@task\ndef transform(): ...\n\n@task\ndef load(): ...\n\nDAG(extract >> transform >> load)",
+  }
+
   const handleOpenFile = async (filename: string) => {
     if (!run || !run.version_id) return
     try {
-      const res = await api.get(endpoints.versionFile(run.project_id, run.version_id, filename))
-      setSelectedFile({ name: filename, content: res.data.data?.content || '' })
+      if (isDemo) {
+        setSelectedFile({ name: filename, content: demoFileContents[filename] || '// File content not available' })
+      } else {
+        const res = await api.get(endpoints.versionFile(run.project_id, run.version_id, filename))
+        setSelectedFile({ name: filename, content: res.data.data?.content || '' })
+      }
     } catch (err) {
       console.error('Failed to open file:', err)
     }
@@ -137,6 +158,7 @@ export default function RunDetail() {
   const handleClearLogs = async () => {
     if (!id) return
     if (!confirm('Clear all logs for this run?')) return
+    if (isDemo) return
     try {
       await api.delete(`${endpoints.runs}/${id}/logs`)
       fetchRunLogs(id).then(() => {})

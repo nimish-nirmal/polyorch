@@ -3,18 +3,28 @@ import { Terminal as XTerm } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import 'xterm/css/xterm.css'
 import { useWebSocket } from '../hooks/useWebSocket'
-import { wsBase } from '../services/api'
+import { wsBase, isDemo } from '../services/api'
 import { api, endpoints } from '../services/api'
 
 interface TerminalProps {
   runId: string
 }
 
+const mockLogLines = [
+  '[PolyOrch] Pipeline started',
+  '[PolyOrch] Extracting data from source...',
+  '[PolyOrch] Extract complete: 1,024 records',
+  '[PolyOrch] Transforming data...',
+  '[PolyOrch] Transform complete: 1,024 records',
+  '[PolyOrch] Loading to warehouse...',
+  '[PolyOrch] Pipeline completed successfully',
+]
+
 export default function Terminal({ runId }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
-  const wsBaseUrl = typeof window !== 'undefined'
+  const wsBaseUrl = !isDemo && typeof window !== 'undefined'
     ? `${wsBase || (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host}/api/v1/ws/logs/${runId}`
     : null
 
@@ -99,7 +109,19 @@ export default function Terminal({ runId }: TerminalProps) {
 
     scheduleFit()
 
-    terminal.writeln(`\x1b[1;36m[PolyOrch]\x1b[0m Connecting to run ${runId}...`)
+    if (isDemo) {
+      terminal.writeln(`\x1b[1;36m[PolyOrch]\x1b[0m Demo mode - sample logs for run ${runId}`)
+      setTimeout(() => {
+        mockLogLines.forEach((line, i) => {
+          setTimeout(() => {
+            const sanitized = line.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '')
+            terminalRef.current?.writeln(sanitized)
+          }, i * 300)
+        })
+      }, 500)
+    } else {
+      terminal.writeln(`\x1b[1;36m[PolyOrch]\x1b[0m Connecting to run ${runId}...`)
+    }
 
     const resizeObserver = new ResizeObserver(scheduleFit)
     resizeObserver.observe(container)
@@ -116,7 +138,7 @@ export default function Terminal({ runId }: TerminalProps) {
   }, [runId])
 
   useEffect(() => {
-    if (!runId) return
+    if (isDemo || !runId) return
     api.get(endpoints.runLogs(runId)).then((res) => {
       const logs = res.data.data || []
       if (terminalRef.current && logs.length > 0) {
